@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -21,7 +21,8 @@ import {
   Target,
   Star,
   BarChart3,
-  Award
+  Award,
+  Info
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import jsPDF from 'jspdf';
@@ -86,6 +87,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   // Configure dropzone for file upload
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -191,6 +193,19 @@ export default function Home() {
   };
 
   const currentEmployee = reportData?.employees[selectedEmployee];
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.tooltip-container')) {
+        setActiveTooltip(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -498,55 +513,131 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Enhanced Stats Grid */}
+                {/* Enhanced Stats Grid with Tooltips */}
                 <div className="p-8">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                    <div className="text-center p-6 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-100">
-                      <div className="text-3xl font-bold text-emerald-600 mb-2">
-                        {Object.values(currentEmployee.valueRatings).filter(r => r >= 4).length}
+                    {/* Strong Areas Card */}
+                    <div className="relative group tooltip-container">
+                      <div 
+                        className="text-center p-6 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-100 hover:shadow-lg transition-all duration-200 cursor-help"
+                        onClick={() => setActiveTooltip(activeTooltip === 'strong' ? null : 'strong')}
+                        onMouseEnter={() => setActiveTooltip('strong')}
+                        onMouseLeave={() => setActiveTooltip(null)}
+                      >
+                        <div className="text-3xl font-bold text-emerald-600 mb-2">
+                          {Object.values(currentEmployee.valueRatings).filter(r => r >= 4).length}
+                        </div>
+                        <div className="text-sm text-emerald-700 font-semibold mb-3 flex items-center justify-center space-x-1">
+                          <span>Strong Areas</span>
+                          <Info className="h-3 w-3 text-emerald-500 opacity-60" />
+                        </div>
+                        <div className="w-full bg-emerald-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full transition-all duration-500" 
+                            style={{ width: `${(Object.values(currentEmployee.valueRatings).filter(r => r >= 4).length / 4) * 100}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="text-sm text-emerald-700 font-semibold mb-3">Strong Areas</div>
-                      <div className="w-full bg-emerald-200 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full transition-all duration-500" 
-                          style={{ width: `${(Object.values(currentEmployee.valueRatings).filter(r => r >= 4).length / 4) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    
-                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
-                        {Object.values(currentEmployee.valueRatings).filter(r => r >= 3 && r < 4).length}
-                      </div>
-                      <div className="text-sm text-blue-700 font-semibold mb-3">Developing</div>
-                      <div className="w-full bg-blue-200 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500" 
-                          style={{ width: `${(Object.values(currentEmployee.valueRatings).filter(r => r >= 3 && r < 4).length / 4) * 100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    
-                    <div className="text-center p-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
-                      <div className="text-3xl font-bold text-amber-600 mb-2">
-                        {Object.values(currentEmployee.valueRatings).filter(r => r < 3).length}
-                      </div>
-                      <div className="text-sm text-amber-700 font-semibold mb-3">Growth Areas</div>
-                      <div className="w-full bg-amber-200 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-500" 
-                          style={{ width: `${(Object.values(currentEmployee.valueRatings).filter(r => r < 3).length / 4) * 100}%` }}
-                        ></div>
+                      {/* Tooltip */}
+                      <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg transition-opacity duration-200 z-20 w-64 text-center ${
+                        activeTooltip === 'strong' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      } md:group-hover:opacity-100 md:opacity-0`}>
+                        <div className="font-semibold mb-1">Strong Areas (4.0-5.0)</div>
+                        <div>Number of core values where this employee excels with ratings of 4.0 or higher</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
                     
-                    <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                      <div className="text-3xl font-bold text-purple-600 mb-2">
-                        {currentEmployee.aiInsights?.developmentPriorities.length || 3}
+                    {/* Developing Card */}
+                    <div className="relative group tooltip-container">
+                      <div 
+                        className="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:shadow-lg transition-all duration-200 cursor-help"
+                        onClick={() => setActiveTooltip(activeTooltip === 'developing' ? null : 'developing')}
+                        onMouseEnter={() => setActiveTooltip('developing')}
+                        onMouseLeave={() => setActiveTooltip(null)}
+                      >
+                        <div className="text-3xl font-bold text-blue-600 mb-2">
+                          {Object.values(currentEmployee.valueRatings).filter(r => r >= 3 && r < 4).length}
+                        </div>
+                        <div className="text-sm text-blue-700 font-semibold mb-3 flex items-center justify-center space-x-1">
+                          <span>Developing</span>
+                          <Info className="h-3 w-3 text-blue-500 opacity-60" />
+                        </div>
+                        <div className="w-full bg-blue-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500" 
+                            style={{ width: `${(Object.values(currentEmployee.valueRatings).filter(r => r >= 3 && r < 4).length / 4) * 100}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="text-sm text-purple-700 font-semibold mb-3">Priorities</div>
-                      <div className="w-full bg-purple-200 rounded-full h-2">
-                        <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full w-full transition-all duration-500"></div>
+                      {/* Tooltip */}
+                      <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg transition-opacity duration-200 z-20 w-64 text-center ${
+                        activeTooltip === 'developing' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      } md:group-hover:opacity-100 md:opacity-0`}>
+                        <div className="font-semibold mb-1">Developing (3.0-3.9)</div>
+                        <div>Number of core values showing solid performance with room for continued growth</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Growth Areas Card */}
+                    <div className="relative group tooltip-container">
+                      <div 
+                        className="text-center p-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 hover:shadow-lg transition-all duration-200 cursor-help"
+                        onClick={() => setActiveTooltip(activeTooltip === 'growth' ? null : 'growth')}
+                        onMouseEnter={() => setActiveTooltip('growth')}
+                        onMouseLeave={() => setActiveTooltip(null)}
+                      >
+                        <div className="text-3xl font-bold text-amber-600 mb-2">
+                          {Object.values(currentEmployee.valueRatings).filter(r => r < 3).length}
+                        </div>
+                        <div className="text-sm text-amber-700 font-semibold mb-3 flex items-center justify-center space-x-1">
+                          <span>Growth Areas</span>
+                          <Info className="h-3 w-3 text-amber-500 opacity-60" />
+                        </div>
+                        <div className="w-full bg-amber-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-500" 
+                            style={{ width: `${(Object.values(currentEmployee.valueRatings).filter(r => r < 3).length / 4) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      {/* Tooltip */}
+                      <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg transition-opacity duration-200 z-20 w-64 text-center ${
+                        activeTooltip === 'growth' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      } md:group-hover:opacity-100 md:opacity-0`}>
+                        <div className="font-semibold mb-1">Growth Areas (Below 3.0)</div>
+                        <div>Number of core values requiring focused development and improvement</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                    
+                    {/* Priorities Card */}
+                    <div className="relative group tooltip-container">
+                      <div 
+                        className="text-center p-6 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100 hover:shadow-lg transition-all duration-200 cursor-help"
+                        onClick={() => setActiveTooltip(activeTooltip === 'priorities' ? null : 'priorities')}
+                        onMouseEnter={() => setActiveTooltip('priorities')}
+                        onMouseLeave={() => setActiveTooltip(null)}
+                      >
+                        <div className="text-3xl font-bold text-purple-600 mb-2">
+                          {currentEmployee.aiInsights?.developmentPriorities.length || 3}
+                        </div>
+                        <div className="text-sm text-purple-700 font-semibold mb-3 flex items-center justify-center space-x-1">
+                          <span>Priorities</span>
+                          <Info className="h-3 w-3 text-purple-500 opacity-60" />
+                        </div>
+                        <div className="w-full bg-purple-200 rounded-full h-2">
+                          <div className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full w-full transition-all duration-500"></div>
+                        </div>
+                      </div>
+                      {/* Tooltip */}
+                      <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg transition-opacity duration-200 z-20 w-64 text-center ${
+                        activeTooltip === 'priorities' ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      } md:group-hover:opacity-100 md:opacity-0`}>
+                        <div className="font-semibold mb-1">AI Development Priorities</div>
+                        <div>Number of key focus areas identified by AI for professional development</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                       </div>
                     </div>
                   </div>
