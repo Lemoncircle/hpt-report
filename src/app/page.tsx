@@ -224,7 +224,17 @@ export default function Home() {
                   {reportData.processingInfo.aiEnabled ? (
                     <>
                       <Brain className="h-4 w-4 text-purple-600" />
-                      <span className="font-semibold text-purple-900">AI Enhanced ({reportData.processingInfo.aiSuccessRate.toFixed(0)}%)</span>
+                      <span className="font-semibold text-purple-900">
+                        {reportData.processingInfo.aiSuccessRate >= 100 ? 
+                          'AI-Powered Analysis' : 
+                          `AI Enhanced (${reportData.processingInfo.aiSuccessRate.toFixed(0)}%)`
+                        }
+                      </span>
+                      {reportData.processingInfo.fallbackUsed && (
+                        <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
+                          Hybrid Mode
+                        </span>
+                      )}
                     </>
                   ) : (
                     <>

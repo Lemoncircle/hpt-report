@@ -31,12 +31,20 @@ export class AIPerformanceAnalyzer {
   constructor() {
     this.apiKey = process.env.PERPLEXITY_API_KEY || '';
     this.isEnabled = process.env.ENABLE_AI_INSIGHTS === 'true' && !!this.apiKey;
+    // Force AI-only mode: disable fallback to ensure all analysis is AI-based
     this.fallbackEnabled = process.env.AI_FALLBACK_ENABLED === 'true';
     
     if (!this.apiKey && this.isEnabled) {
       console.warn('Perplexity API key not found. AI insights will be disabled.');
       this.isEnabled = false;
     }
+    
+    // Log AI configuration for debugging
+    console.log('AI Configuration:', {
+      enabled: this.isEnabled,
+      fallbackEnabled: this.fallbackEnabled,
+      hasApiKey: !!this.apiKey
+    });
   }
 
   // Main method to get AI-enhanced insights for an employee
@@ -57,11 +65,18 @@ export class AIPerformanceAnalyzer {
   ): Promise<AIInsights | null> {
     
     if (!this.isEnabled) {
-      console.log('AI insights disabled, using fallback');
-      return this.fallbackEnabled ? this.generateFallbackInsights(employeeData, teamContext) : null;
+      if (this.fallbackEnabled) {
+        console.log('AI insights disabled, using fallback analysis');
+        return this.generateFallbackInsights(employeeData, teamContext);
+      } else {
+        console.error('AI insights disabled and fallback disabled. Cannot provide analysis.');
+        throw new Error('AI analysis is required but not properly configured. Please set PERPLEXITY_API_KEY and ENABLE_AI_INSIGHTS=true');
+      }
     }
 
     try {
+      console.log(`Generating AI insights for ${employeeData.name}...`);
+      
       // Create comprehensive prompt for Perplexity
       const prompt = this.buildAnalysisPrompt(employeeData, teamContext);
       
@@ -71,18 +86,20 @@ export class AIPerformanceAnalyzer {
       // Parse and structure the AI response
       const insights = this.parseAIResponse(response);
       
+      console.log(`✅ AI insights generated successfully for ${employeeData.name}`);
       return insights;
       
     } catch (error) {
-      console.error('AI analysis failed:', error);
+      console.error(`❌ AI analysis failed for ${employeeData.name}:`, error);
       
-      // Fallback to rule-based analysis if AI fails
+      // Only use fallback if explicitly enabled
       if (this.fallbackEnabled) {
-        console.log('Falling back to rule-based analysis');
+        console.log(`⚠️ Falling back to rule-based analysis for ${employeeData.name}`);
         return this.generateFallbackInsights(employeeData, teamContext);
+      } else {
+        // If fallback is disabled, throw error to ensure AI-only analysis
+        throw new Error(`AI analysis failed for ${employeeData.name} and fallback is disabled. Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-      
-      return null;
     }
   }
 
@@ -336,7 +353,7 @@ Provide only the JSON response, no additional text.`;
     }
   }
 
-  // Method to analyze team trends and patterns
+  // Method to analyze team trends and patterns with AI-first approach
   async analyzeTeamTrends(
     teamData: Array<{
       name: string;
@@ -352,17 +369,42 @@ Provide only the JSON response, no additional text.`;
     recommendations: string[];
   } | null> {
     
-    if (!this.isEnabled || teamData.length === 0) {
+    if (teamData.length === 0) {
+      console.warn('No team data provided for analysis');
       return this.generateFallbackTeamAnalysis(teamData);
     }
 
+    if (!this.isEnabled) {
+      if (this.fallbackEnabled) {
+        console.log('AI team analysis disabled, using fallback analysis');
+        return this.generateFallbackTeamAnalysis(teamData);
+      } else {
+        console.error('AI team analysis disabled and fallback disabled. Cannot provide team analysis.');
+        throw new Error('AI team analysis is required but not properly configured. Please set PERPLEXITY_API_KEY and ENABLE_AI_INSIGHTS=true');
+      }
+    }
+
     try {
+      console.log(`Generating AI team insights for ${teamData.length} employees...`);
+      
       const prompt = this.buildTeamAnalysisPrompt(teamData);
       const response = await this.callPerplexityAPI(prompt);
-      return this.parseTeamAnalysisResponse(response);
+      const insights = this.parseTeamAnalysisResponse(response);
+      
+      console.log('✅ AI team insights generated successfully');
+      return insights;
+      
     } catch (error) {
-      console.error('Team analysis failed:', error);
-      return this.fallbackEnabled ? this.generateFallbackTeamAnalysis(teamData) : null;
+      console.error('❌ AI team analysis failed:', error);
+      
+      // Only use fallback if explicitly enabled
+      if (this.fallbackEnabled) {
+        console.log('⚠️ Falling back to rule-based team analysis');
+        return this.generateFallbackTeamAnalysis(teamData);
+      } else {
+        // If fallback is disabled, throw error to ensure AI-only analysis
+        throw new Error(`AI team analysis failed and fallback is disabled. Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   }
 

@@ -158,7 +158,7 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
           // Could add industry benchmarks here if available
         };
 
-        // Get AI-enhanced insights
+        // Get AI-enhanced insights (now prioritizing AI analysis)
         const aiInsights = await aiAnalyzer.getEnhancedInsights(employeeData, teamContext);
         
         if (aiInsights) {
@@ -167,12 +167,14 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
             ...employee,
             aiInsights,
             isAiEnhanced: true,
-            // Override summary and recommendations with AI-enhanced versions if available
-            summary: aiInsights.enhancedSummary || employee.summary,
-            suggestedBehavioralShift: aiInsights.behavioralRecommendations || employee.suggestedBehavioralShift,
+            // Use AI-enhanced versions as primary content
+            summary: aiInsights.enhancedSummary,
+            suggestedBehavioralShift: aiInsights.behavioralRecommendations,
           };
         } else {
+          // This should rarely happen with the new AI-first approach
           fallbackUsed = true;
+          console.warn(`No AI insights generated for ${employee.name}, using rule-based analysis`);
           return {
             ...employee,
             isAiEnhanced: false,
@@ -180,6 +182,13 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
         }
       } catch (error) {
         console.error(`AI enhancement failed for ${employee.name}:`, error);
+        
+        // Check if this is a configuration error (AI required but not configured)
+        if (error instanceof Error && error.message.includes('AI analysis is required')) {
+          // Re-throw configuration errors to stop processing
+          throw error;
+        }
+        
         fallbackUsed = true;
         return {
           ...employee,
@@ -189,7 +198,7 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
     })
   );
 
-  // Get team-level AI insights
+  // Get team-level AI insights (prioritizing AI analysis)
   let teamInsights;
   try {
     const teamData = enhancedEmployees.map(emp => ({
@@ -201,8 +210,19 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
     }));
 
     teamInsights = await aiAnalyzer.analyzeTeamTrends(teamData);
+    
+    if (teamInsights) {
+      console.log('✅ Team AI insights generated successfully');
+    }
   } catch (error) {
-    console.error('Team analysis failed:', error);
+    console.error('❌ Team analysis failed:', error);
+    
+    // Check if this is a configuration error (AI required but not configured)
+    if (error instanceof Error && error.message.includes('AI team analysis is required')) {
+      // Re-throw configuration errors to stop processing
+      throw error;
+    }
+    
     teamInsights = null;
   }
 

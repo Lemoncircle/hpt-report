@@ -16,7 +16,7 @@ This application now features a hybrid AI-enhanced analysis system using Perplex
 
 ### 2. Configure Environment Variables
 
-Update your `.env.local` file with your Perplexity API key:
+Create or update your `.env.local` file with your Perplexity API key:
 
 ```bash
 # Perplexity API Configuration
@@ -24,14 +24,52 @@ PERPLEXITY_API_KEY=your_actual_perplexity_api_key_here
 
 # AI Enhancement Settings
 ENABLE_AI_INSIGHTS=true
-AI_FALLBACK_ENABLED=true
+
+# AI-Only Mode (Recommended for best insights)
+AI_FALLBACK_ENABLED=false
+
+# Alternative: Hybrid Mode (AI with rule-based fallback)
+# AI_FALLBACK_ENABLED=true
 ```
+
+**🚀 For AI-Only Analysis (Recommended):**
+- Set `ENABLE_AI_INSIGHTS=true`
+- Set `AI_FALLBACK_ENABLED=false`
+- This ensures all analysis uses AI for maximum insight quality
+
+**🔄 For Hybrid Mode:**
+- Set `ENABLE_AI_INSIGHTS=true`
+- Set `AI_FALLBACK_ENABLED=true`
+- Falls back to rule-based analysis if AI fails
 
 ### 3. Environment Variables Explained
 
 - **`PERPLEXITY_API_KEY`**: Your Perplexity API key for AI-enhanced insights
 - **`ENABLE_AI_INSIGHTS`**: Set to `true` to enable AI features, `false` for rule-based only
-- **`AI_FALLBACK_ENABLED`**: Set to `true` to use rule-based analysis when AI fails
+- **`AI_FALLBACK_ENABLED`**: 
+  - `false` = AI-Only Mode (recommended for best insights)
+  - `true` = Hybrid Mode (AI with rule-based fallback)
+
+## 🎯 AI-Only Mode Benefits
+
+When `AI_FALLBACK_ENABLED=false`, you get:
+
+### ✅ **Superior Analysis Quality**
+- **Deep Contextual Understanding**: AI analyzes performance patterns, behavioral indicators, and team dynamics
+- **Personalized Insights**: Each employee gets tailored recommendations based on their unique profile
+- **Predictive Analysis**: AI identifies future performance trends and potential challenges
+- **Nuanced Feedback**: Complex sentiment analysis of comments and feedback
+
+### ✅ **Consistency & Reliability**
+- **Uniform AI Standards**: All employees analyzed using the same advanced AI model
+- **No Mixed Analysis Types**: Eliminates confusion between AI and rule-based insights
+- **Quality Assurance**: Ensures every report meets AI-enhanced standards
+
+### ✅ **Advanced Features**
+- **Behavioral Recommendations**: Specific, actionable development strategies
+- **Risk Factor Analysis**: Proactive identification of performance challenges
+- **Success Predictors**: Key indicators for future high performance
+- **Team Dynamics**: Comprehensive team-level insights and recommendations
 
 ## 🔧 How It Works
 
