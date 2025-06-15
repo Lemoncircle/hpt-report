@@ -24,7 +24,6 @@ import {
   Brain,
   Lightbulb,
   AlertTriangle,
-  TrendingDown,
   Activity
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';

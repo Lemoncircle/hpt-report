@@ -104,9 +104,8 @@ export class AIPerformanceAnalyzer {
   ): string {
     
     const { name, ratings, feedback, role, department, tenure } = employeeData;
-    const averageRating = Object.values(ratings).reduce((sum, r) => sum + r, 0) / Object.keys(ratings).length;
     
-    let prompt = `As an expert HR performance analyst, provide a comprehensive analysis for employee performance review.
+    const prompt = `As an expert HR performance analyst, provide a comprehensive analysis for employee performance review.
 
 EMPLOYEE PROFILE:
 - Name: ${name}
@@ -116,7 +115,7 @@ EMPLOYEE PROFILE:
 
 PERFORMANCE RATINGS (Scale 1-5):
 ${Object.entries(ratings).map(([key, value]) => `- ${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}/5.0`).join('\n')}
-- Overall Average: ${averageRating.toFixed(1)}/5.0
+- Overall Average: ${(Object.values(ratings).reduce((sum, r) => sum + r, 0) / Object.keys(ratings).length).toFixed(1)}/5.0
 
 ${feedback ? `FEEDBACK/COMMENTS:\n"${feedback}"\n` : ''}
 
@@ -189,8 +188,8 @@ Provide only the JSON response, no additional text.`;
     try {
       // Try to parse as JSON first
       const cleanResponse = aiResponse.trim();
-      let jsonStart = cleanResponse.indexOf('{');
-      let jsonEnd = cleanResponse.lastIndexOf('}') + 1;
+      const jsonStart = cleanResponse.indexOf('{');
+      const jsonEnd = cleanResponse.lastIndexOf('}') + 1;
       
       if (jsonStart !== -1 && jsonEnd > jsonStart) {
         const jsonString = cleanResponse.substring(jsonStart, jsonEnd);
@@ -273,7 +272,7 @@ Provide only the JSON response, no additional text.`;
       feedbackAnalysis: feedback ? `Feedback indicates ${feedback.length > 100 ? 'comprehensive' : 'focused'} input on performance areas.` : 'No specific feedback provided for analysis.',
       developmentPriorities: this.generateDevelopmentPriorities(performanceLevel, growthArea),
       strengthsAnalysis: `${firstName} demonstrates particular strength in ${topStrength}, which serves as a foundation for continued growth and team contribution.`,
-      riskFactors: this.generateRiskFactors(performanceLevel, averageRating),
+      riskFactors: this.generateRiskFactors(performanceLevel),
       successPredictors: this.generateSuccessPredictors(performanceLevel, topStrength)
     };
   }
@@ -299,7 +298,7 @@ Provide only the JSON response, no additional text.`;
     }
   }
 
-  private generateFallbackTrendAnalysis(averageRating: number, teamContext?: any): string {
+  private generateFallbackTrendAnalysis(averageRating: number, teamContext?: { averageRatings: Record<string, number>; teamSize: number }): string {
     const comparison = teamContext ? 
       (averageRating > ((Object.values(teamContext.averageRatings) as number[]).reduce((sum: number, r: number) => sum + r, 0) / Object.keys(teamContext.averageRatings).length) ? 
         'above team average' : 'at or below team average') : 'within expected range';
@@ -317,7 +316,7 @@ Provide only the JSON response, no additional text.`;
     }
   }
 
-  private generateRiskFactors(performanceLevel: string, averageRating: number): string[] {
+  private generateRiskFactors(performanceLevel: string): string[] {
     if (performanceLevel === 'high') {
       return ['Potential for complacency', 'Risk of being overlooked for advancement'];
     } else if (performanceLevel === 'moderate') {
@@ -367,7 +366,7 @@ Provide only the JSON response, no additional text.`;
     }
   }
 
-  private buildTeamAnalysisPrompt(teamData: Array<any>): string {
+  private buildTeamAnalysisPrompt(teamData: Array<{ name: string; ratings: Record<string, number>; feedback?: string; role?: string; department?: string }>): string {
     const teamSummary = teamData.map(emp => ({
       name: emp.name,
       average: (Object.values(emp.ratings) as number[]).reduce((sum: number, r: number) => sum + r, 0) / Object.keys(emp.ratings).length,
@@ -388,7 +387,7 @@ Provide analysis in this JSON format:
 }`;
   }
 
-  private parseTeamAnalysisResponse(response: string): any {
+  private parseTeamAnalysisResponse(response: string): { overallTrends: string; riskAreas: string[]; strengthAreas: string[]; recommendations: string[] } {
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -401,7 +400,7 @@ Provide analysis in this JSON format:
     return this.generateFallbackTeamAnalysis([]);
   }
 
-  private generateFallbackTeamAnalysis(teamData: Array<any>): any {
+  private generateFallbackTeamAnalysis(teamData: Array<{ name: string; ratings: Record<string, number> }>): { overallTrends: string; riskAreas: string[]; strengthAreas: string[]; recommendations: string[] } {
     if (teamData.length === 0) {
       return {
         overallTrends: 'Insufficient data for team analysis',

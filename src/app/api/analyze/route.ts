@@ -195,9 +195,9 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
     const teamData = enhancedEmployees.map(emp => ({
       name: emp.name,
       ratings: emp.valueRatings,
-      feedback: undefined, // Could extract from original data if needed
-      role: undefined,
-      department: undefined,
+      feedback: undefined as string | undefined, // Could extract from original data if needed
+      role: undefined as string | undefined,
+      department: undefined as string | undefined,
     }));
 
     teamInsights = await aiAnalyzer.analyzeTeamTrends(teamData);
