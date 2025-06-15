@@ -20,13 +20,18 @@ import {
   Sparkles,
   Zap,
   Shield,
-  Clock
+  Clock,
+  Brain,
+  Lightbulb,
+  AlertTriangle,
+  TrendingDown,
+  Activity
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// Define interfaces for type safety - updated for individual employee reports
+// Define interfaces for type safety - updated for AI-enhanced individual employee reports
 interface EmployeeReport {
   name: string;
   topValueObserved: string;
@@ -39,6 +44,18 @@ interface EmployeeReport {
   };
   summary: string;
   suggestedBehavioralShift: string;
+  // AI-enhanced fields
+  aiInsights?: {
+    enhancedSummary: string;
+    behavioralRecommendations: string;
+    trendAnalysis: string;
+    feedbackAnalysis: string;
+    developmentPriorities: string[];
+    strengthsAnalysis: string;
+    riskFactors: string[];
+    successPredictors: string[];
+  };
+  isAiEnhanced: boolean;
 }
 
 interface ReportData {
@@ -49,6 +66,19 @@ interface ReportData {
     communication: number;
     respect: number;
     transparency: number;
+  };
+  // AI-enhanced team insights
+  teamInsights?: {
+    overallTrends: string;
+    riskAreas: string[];
+    strengthAreas: string[];
+    recommendations: string[];
+  };
+  processingInfo: {
+    aiEnabled: boolean;
+    aiSuccessRate: number;
+    fallbackUsed: boolean;
+    processingTime: number;
   };
 }
 
@@ -197,8 +227,17 @@ export default function Home() {
                 </div>
                 <div className="h-4 w-px bg-slate-300"></div>
                 <div className="flex items-center space-x-2">
-                  <Zap className="h-4 w-4 text-emerald-500" />
-                  <span className="font-semibold">Latest Analysis</span>
+                  {reportData.processingInfo.aiEnabled ? (
+                    <>
+                      <Brain className="h-4 w-4 text-purple-500" />
+                      <span className="font-semibold">AI Enhanced ({reportData.processingInfo.aiSuccessRate.toFixed(0)}%)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 text-emerald-500" />
+                      <span className="font-semibold">Rule-Based Analysis</span>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -280,13 +319,13 @@ export default function Home() {
                     </div>
                     <div className="text-center">
                       <div className="glass-card rounded-lg p-3 mb-2">
-                        <Zap className="h-6 w-6 text-blue-500 mx-auto" />
+                        <Brain className="h-6 w-6 text-purple-500 mx-auto" />
                       </div>
-                      <span className="text-xs font-medium text-slate-600">Instant Results</span>
+                      <span className="text-xs font-medium text-slate-600">AI Enhanced</span>
                     </div>
                     <div className="text-center">
                       <div className="glass-card rounded-lg p-3 mb-2">
-                        <Clock className="h-6 w-6 text-purple-500 mx-auto" />
+                        <Clock className="h-6 w-6 text-blue-500 mx-auto" />
                       </div>
                       <span className="text-xs font-medium text-slate-600">No Data Storage</span>
                     </div>
@@ -319,7 +358,7 @@ export default function Home() {
                     </div>
                     <div className="text-left">
                       <h3 className="text-xl font-bold text-slate-900 mb-1">Processing Your Data</h3>
-                      <p className="text-slate-600">Generating personalized insights for each employee...</p>
+                      <p className="text-slate-600">Generating AI-enhanced insights for each employee...</p>
                       <div className="flex items-center space-x-4 mt-3 text-sm text-slate-500">
                         <span>• AI Analysis</span>
                         <span>• Performance Scoring</span>
@@ -336,7 +375,7 @@ export default function Home() {
         {/* Enhanced Employee Reports Section */}
         {reportData && (
           <div className="space-y-12">
-            {/* Team Dashboard with Premium Styling */}
+            {/* Team Dashboard with Premium Styling and AI Info */}
             <div className="premium-card p-8 slide-up">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-4">
@@ -349,13 +388,35 @@ export default function Home() {
                   </div>
                 </div>
                 
-                <button
-                  onClick={downloadPDF}
-                  className="btn-primary flex items-center space-x-3"
-                >
-                  <Download className="h-5 w-5" />
-                  <span>Export Report</span>
-                </button>
+                <div className="flex items-center space-x-4">
+                  {/* AI Processing Info */}
+                  <div className="glass-card rounded-xl px-4 py-3 text-sm">
+                    <div className="flex items-center space-x-2 mb-1">
+                      {reportData.processingInfo.aiEnabled ? (
+                        <Brain className="h-4 w-4 text-purple-500" />
+                      ) : (
+                        <Activity className="h-4 w-4 text-blue-500" />
+                      )}
+                      <span className="font-semibold text-slate-700">
+                        {reportData.processingInfo.aiEnabled ? 'AI Enhanced' : 'Rule-Based'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {reportData.processingInfo.aiEnabled && (
+                        <span>Success: {reportData.processingInfo.aiSuccessRate.toFixed(0)}% • </span>
+                      )}
+                      {reportData.processingInfo.processingTime}ms
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={downloadPDF}
+                    className="btn-primary flex items-center space-x-3"
+                  >
+                    <Download className="h-5 w-5" />
+                    <span>Export Report</span>
+                  </button>
+                </div>
               </div>
               
               {/* Premium Search */}
@@ -372,7 +433,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Premium Employee Grid */}
+              {/* Premium Employee Grid with AI indicators */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEmployees.map((employee, index) => {
                   const employeeIndex = reportData.employees.findIndex(e => e.name === employee.name);
@@ -392,9 +453,17 @@ export default function Home() {
                             {averageRating >= 4.0 && (
                               <Star className="absolute -top-1 -right-1 h-3 w-3 text-yellow-400 fill-current" />
                             )}
+                            {employee.isAiEnhanced && (
+                              <Brain className="absolute -bottom-1 -right-1 h-3 w-3 text-purple-500 fill-current" />
+                            )}
                           </div>
                           <div className="text-left">
-                            <h3 className="font-bold text-slate-900 text-base">{employee.name}</h3>
+                            <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
+                              <span>{employee.name}</span>
+                              {employee.isAiEnhanced && (
+                                <Sparkles className="h-3 w-3 text-purple-500" />
+                              )}
+                            </h3>
                             <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${performance.class}`}>
                               {performance.level}
                             </span>
@@ -419,22 +488,34 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Premium Individual Employee Report */}
+            {/* Premium Individual Employee Report with AI Insights */}
             {currentEmployee && (
               <div className="premium-card overflow-hidden slide-up">
                 <div id="employee-report-content" className="p-10 space-y-10">
-                  {/* Premium Report Header */}
+                  {/* Premium Report Header with AI indicator */}
                   <div className="border-b border-slate-200/60 pb-8">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-6">
                         <div className={`p-4 rounded-2xl ${performanceLevel?.bg} relative shadow-lg`}>
                           <Award className={`h-10 w-10 ${performanceLevel?.color}`} />
                           <div className="absolute -top-2 -right-2 p-1 bg-white rounded-full shadow-md">
-                            <Sparkles className="h-4 w-4 text-yellow-500" />
+                            {currentEmployee.isAiEnhanced ? (
+                              <Brain className="h-4 w-4 text-purple-500" />
+                            ) : (
+                              <Sparkles className="h-4 w-4 text-yellow-500" />
+                            )}
                           </div>
                         </div>
                         <div>
-                          <h2 className="text-4xl font-bold text-slate-900 mb-2">{currentEmployee.name}</h2>
+                          <h2 className="text-4xl font-bold text-slate-900 mb-2 flex items-center space-x-3">
+                            <span>{currentEmployee.name}</span>
+                            {currentEmployee.isAiEnhanced && (
+                              <div className="inline-flex items-center space-x-1 px-3 py-1 bg-purple-100 rounded-full">
+                                <Brain className="h-4 w-4 text-purple-600" />
+                                <span className="text-sm font-semibold text-purple-700">AI Enhanced</span>
+                              </div>
+                            )}
+                          </h2>
                           <div className="flex items-center space-x-4">
                             <span className={`px-4 py-2 rounded-full text-sm font-bold ${performanceLevel?.class}`}>
                               {performanceLevel?.level} Performance
@@ -487,6 +568,75 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+
+                  {/* AI-Enhanced Insights Section */}
+                  {currentEmployee.isAiEnhanced && currentEmployee.aiInsights && (
+                    <div className="space-y-8">
+                      <h3 className="text-2xl font-bold text-slate-900 flex items-center space-x-3">
+                        <Brain className="h-6 w-6 text-purple-500" />
+                        <span>AI-Enhanced Insights</span>
+                      </h3>
+                      
+                      <div className="grid md:grid-cols-2 gap-8">
+                        {/* Development Priorities */}
+                        <div className="glass-card rounded-2xl p-6 border border-purple-200 bg-gradient-to-r from-purple-50/50 to-indigo-50/50">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <Lightbulb className="h-6 w-6 text-purple-600" />
+                            <h4 className="text-lg font-bold text-purple-900">Development Priorities</h4>
+                          </div>
+                          <ul className="space-y-2">
+                            {currentEmployee.aiInsights.developmentPriorities.map((priority, index) => (
+                              <li key={index} className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                <span className="text-purple-800 font-medium">{priority}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Risk Factors */}
+                        <div className="glass-card rounded-2xl p-6 border border-amber-200 bg-gradient-to-r from-amber-50/50 to-orange-50/50">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <AlertTriangle className="h-6 w-6 text-amber-600" />
+                            <h4 className="text-lg font-bold text-amber-900">Risk Factors</h4>
+                          </div>
+                          <ul className="space-y-2">
+                            {currentEmployee.aiInsights.riskFactors.map((risk, index) => (
+                              <li key={index} className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                                <span className="text-amber-800 font-medium">{risk}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* AI Trend Analysis */}
+                      <div className="glass-card rounded-2xl p-8 border border-blue-200">
+                        <h4 className="text-xl font-bold text-slate-900 mb-4 flex items-center space-x-3">
+                          <TrendingUp className="h-6 w-6 text-blue-500" />
+                          <span>Trend Analysis</span>
+                        </h4>
+                        <p className="text-lg text-slate-700 leading-relaxed">{currentEmployee.aiInsights.trendAnalysis}</p>
+                      </div>
+
+                      {/* Success Predictors */}
+                      <div className="glass-card rounded-2xl p-6 border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-green-50/50">
+                        <div className="flex items-center space-x-3 mb-4">
+                          <Star className="h-6 w-6 text-emerald-600" />
+                          <h4 className="text-lg font-bold text-emerald-900">Success Predictors</h4>
+                        </div>
+                        <ul className="space-y-2">
+                          {currentEmployee.aiInsights.successPredictors.map((predictor, index) => (
+                            <li key={index} className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                              <span className="text-emerald-800 font-medium">{predictor}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Premium Performance Breakdown */}
                   <div className="space-y-8">
@@ -546,6 +696,12 @@ export default function Home() {
                     <h3 className="text-2xl font-bold text-slate-900 mb-6 flex items-center space-x-3">
                       <Eye className="h-6 w-6 text-indigo-500" />
                       <span>Performance Summary</span>
+                      {currentEmployee.isAiEnhanced && (
+                        <span className="inline-flex items-center space-x-1 px-2 py-1 bg-purple-100 rounded-full text-xs font-semibold text-purple-700">
+                          <Brain className="h-3 w-3" />
+                          <span>AI Enhanced</span>
+                        </span>
+                      )}
                     </h3>
                     <p className="text-lg text-slate-700 leading-relaxed">{currentEmployee.summary}</p>
                   </div>
@@ -555,6 +711,12 @@ export default function Home() {
                     <h3 className="text-2xl font-bold text-slate-900 mb-6 flex items-center space-x-3">
                       <Target className="h-6 w-6 text-blue-500" />
                       <span>Recommended Actions</span>
+                      {currentEmployee.isAiEnhanced && (
+                        <span className="inline-flex items-center space-x-1 px-2 py-1 bg-purple-100 rounded-full text-xs font-semibold text-purple-700">
+                          <Brain className="h-3 w-3" />
+                          <span>AI Enhanced</span>
+                        </span>
+                      )}
                     </h3>
                     <div className="glass-card rounded-xl p-6 bg-white/60">
                       <p className="text-lg text-slate-700 leading-relaxed">{currentEmployee.suggestedBehavioralShift}</p>
@@ -564,14 +726,14 @@ export default function Home() {
               </div>
             )}
 
-            {/* Premium Team Performance Overview */}
+            {/* Premium Team Performance Overview with AI Team Insights */}
             <div className="premium-card p-8 slide-up">
               <h3 className="text-2xl font-bold text-slate-900 mb-8 flex items-center space-x-3">
                 <BarChart3 className="h-6 w-6 text-purple-500" />
                 <span>Team Performance Overview</span>
               </h3>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
                 {Object.entries(reportData.averageRatings).map(([value, rating]) => (
                   <div key={value} className="stat-card relative">
                     <div className={`inline-flex p-4 rounded-2xl mb-4 ${
@@ -591,6 +753,61 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+
+              {/* AI Team Insights */}
+              {reportData.teamInsights && (
+                <div className="glass-card rounded-2xl p-8 border border-purple-200 bg-gradient-to-r from-purple-50/50 to-indigo-50/50">
+                  <h4 className="text-xl font-bold text-slate-900 mb-6 flex items-center space-x-3">
+                    <Brain className="h-6 w-6 text-purple-500" />
+                    <span>AI Team Analysis</span>
+                  </h4>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <h5 className="font-semibold text-purple-900 mb-2">Overall Trends</h5>
+                      <p className="text-purple-800">{reportData.teamInsights.overallTrends}</p>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h5 className="font-semibold text-emerald-900 mb-3 flex items-center space-x-2">
+                          <Star className="h-4 w-4 text-emerald-600" />
+                          <span>Strength Areas</span>
+                        </h5>
+                        <ul className="space-y-1">
+                          {reportData.teamInsights.strengthAreas.map((strength, index) => (
+                            <li key={index} className="text-emerald-800 text-sm">• {strength}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h5 className="font-semibold text-amber-900 mb-3 flex items-center space-x-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                          <span>Risk Areas</span>
+                        </h5>
+                        <ul className="space-y-1">
+                          {reportData.teamInsights.riskAreas.map((risk, index) => (
+                            <li key={index} className="text-amber-800 text-sm">• {risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h5 className="font-semibold text-blue-900 mb-3 flex items-center space-x-2">
+                        <Lightbulb className="h-4 w-4 text-blue-600" />
+                        <span>Recommendations</span>
+                      </h5>
+                      <ul className="space-y-1">
+                        {reportData.teamInsights.recommendations.map((rec, index) => (
+                          <li key={index} className="text-blue-800 text-sm">• {rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

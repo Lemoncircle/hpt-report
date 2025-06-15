@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
+import { aiAnalyzer } from '@/lib/ai-service';
 
-// Define the structure of individual employee report
+// Define the structure of individual employee report with AI enhancements
 interface EmployeeReport {
   name: string;
   topValueObserved: string;
@@ -14,9 +15,21 @@ interface EmployeeReport {
   };
   summary: string;
   suggestedBehavioralShift: string;
+  // AI-enhanced fields
+  aiInsights?: {
+    enhancedSummary: string;
+    behavioralRecommendations: string;
+    trendAnalysis: string;
+    feedbackAnalysis: string;
+    developmentPriorities: string[];
+    strengthsAnalysis: string;
+    riskFactors: string[];
+    successPredictors: string[];
+  };
+  isAiEnhanced: boolean;
 }
 
-// Define the structure of our complete report response
+// Define the structure of our complete report response with team insights
 interface ReportData {
   employees: EmployeeReport[];
   totalEmployees: number;
@@ -26,10 +39,25 @@ interface ReportData {
     respect: number;
     transparency: number;
   };
+  // AI-enhanced team insights
+  teamInsights?: {
+    overallTrends: string;
+    riskAreas: string[];
+    strengthAreas: string[];
+    recommendations: string[];
+  };
+  processingInfo: {
+    aiEnabled: boolean;
+    aiSuccessRate: number;
+    fallbackUsed: boolean;
+    processingTime: number;
+  };
 }
 
-// POST endpoint to analyze uploaded Excel files
+// POST endpoint to analyze uploaded Excel files with AI enhancement
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     // Parse the form data containing the uploaded file
     const formData = await request.formData();
@@ -59,13 +87,17 @@ export async function POST(request: NextRequest) {
     // Convert Excel data to JSON for analysis
     const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
-    // Analyze the survey data and generate individual employee reports
-    const reportData = await analyzeEmployeeData(jsonData);
+    // Analyze the survey data and generate individual employee reports with AI enhancement
+    const reportData = await analyzeEmployeeDataWithAI(jsonData);
+    
+    const processingTime = Date.now() - startTime;
+    reportData.processingInfo.processingTime = processingTime;
 
     return NextResponse.json({ 
       report: reportData,
       filename: file.name,
-      processedAt: new Date().toISOString()
+      processedAt: new Date().toISOString(),
+      processingTimeMs: processingTime
     });
 
   } catch (error) {
@@ -77,10 +109,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Function to analyze employee survey data and generate individual reports
-async function analyzeEmployeeData(data: Record<string, unknown>[]): Promise<ReportData> {
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 1500));
+// Enhanced function to analyze employee survey data with AI integration
+async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promise<ReportData> {
+  // Simulate processing time for UI feedback
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   if (data.length === 0) {
     throw new Error('No data found in the Excel file');
@@ -90,21 +122,106 @@ async function analyzeEmployeeData(data: Record<string, unknown>[]): Promise<Rep
   const columns = Object.keys(data[0]);
   console.log('Available columns:', columns);
 
-  // Generate individual employee reports
-  const employees = data.map((row, index) => generateEmployeeReport(row, columns, index));
+  // Generate base employee reports using existing rule-based system
+  const baseEmployees = data.map((row, index) => generateEmployeeReport(row, columns, index));
 
   // Calculate average ratings across all employees
-  const averageRatings = calculateAverageRatings(employees);
+  const averageRatings = calculateAverageRatings(baseEmployees);
+
+  // Track AI enhancement statistics
+  let aiSuccessCount = 0;
+  let fallbackUsed = false;
+
+  // Enhance each employee report with AI insights
+  const enhancedEmployees = await Promise.all(
+    baseEmployees.map(async (employee, index) => {
+      try {
+        // Extract additional data for AI analysis
+        const rowData = data[index];
+        const feedbackField = findColumnVariation(columns, ['feedback', 'comments', 'notes', 'suggestions', 'remarks']);
+        const roleField = findColumnVariation(columns, ['role', 'position', 'title', 'job_title']);
+        const departmentField = findColumnVariation(columns, ['department', 'dept', 'division', 'team']);
+        const tenureField = findColumnVariation(columns, ['tenure', 'years', 'experience', 'time_in_role']);
+
+        const employeeData = {
+          name: employee.name,
+          ratings: employee.valueRatings,
+          feedback: feedbackField && rowData[feedbackField] ? String(rowData[feedbackField]) : undefined,
+          role: roleField && rowData[roleField] ? String(rowData[roleField]) : undefined,
+          department: departmentField && rowData[departmentField] ? String(rowData[departmentField]) : undefined,
+          tenure: tenureField && rowData[tenureField] ? String(rowData[tenureField]) : undefined,
+        };
+
+        const teamContext = {
+          averageRatings,
+          teamSize: baseEmployees.length,
+          // Could add industry benchmarks here if available
+        };
+
+        // Get AI-enhanced insights
+        const aiInsights = await aiAnalyzer.getEnhancedInsights(employeeData, teamContext);
+        
+        if (aiInsights) {
+          aiSuccessCount++;
+          return {
+            ...employee,
+            aiInsights,
+            isAiEnhanced: true,
+            // Override summary and recommendations with AI-enhanced versions if available
+            summary: aiInsights.enhancedSummary || employee.summary,
+            suggestedBehavioralShift: aiInsights.behavioralRecommendations || employee.suggestedBehavioralShift,
+          };
+        } else {
+          fallbackUsed = true;
+          return {
+            ...employee,
+            isAiEnhanced: false,
+          };
+        }
+      } catch (error) {
+        console.error(`AI enhancement failed for ${employee.name}:`, error);
+        fallbackUsed = true;
+        return {
+          ...employee,
+          isAiEnhanced: false,
+        };
+      }
+    })
+  );
+
+  // Get team-level AI insights
+  let teamInsights;
+  try {
+    const teamData = enhancedEmployees.map(emp => ({
+      name: emp.name,
+      ratings: emp.valueRatings,
+      feedback: undefined, // Could extract from original data if needed
+      role: undefined,
+      department: undefined,
+    }));
+
+    teamInsights = await aiAnalyzer.analyzeTeamTrends(teamData);
+  } catch (error) {
+    console.error('Team analysis failed:', error);
+    teamInsights = null;
+  }
 
   return {
-    employees,
-    totalEmployees: employees.length,
-    averageRatings
+    employees: enhancedEmployees,
+    totalEmployees: enhancedEmployees.length,
+    averageRatings,
+    teamInsights: teamInsights || undefined,
+    processingInfo: {
+      aiEnabled: process.env.ENABLE_AI_INSIGHTS === 'true',
+      aiSuccessRate: enhancedEmployees.length > 0 ? (aiSuccessCount / enhancedEmployees.length) * 100 : 0,
+      fallbackUsed,
+      processingTime: 0, // Will be set in the main function
+    },
   };
 }
 
-// Helper function to generate individual employee report
-function generateEmployeeReport(rowData: Record<string, unknown>, columns: string[], index: number): EmployeeReport {
+// Helper function to generate individual employee report (existing logic)
+function generateEmployeeReport(rowData: Record<string, unknown>, columns: string[], index: number): Omit<EmployeeReport, 'aiInsights' | 'isAiEnhanced'> {
   // Extract employee name from common column variations
   const nameField = findColumnVariation(columns, ['name', 'employee', 'full_name', 'employee_name', 'participant']);
   let employeeName = 'Anonymous Employee';
@@ -128,7 +245,7 @@ function generateEmployeeReport(rowData: Record<string, unknown>, columns: strin
   const topValue = values.reduce((max, current) => current[1] > max[1] ? current : max)[0];
   const growthArea = values.reduce((min, current) => current[1] < min[1] ? current : min)[0];
 
-  // Generate contextual summary and behavioral shifts
+  // Generate contextual summary and behavioral shifts using existing logic
   const { summary, behavioralShift } = generatePersonalizedInsights(employeeName, valueRatings, rowData, columns);
 
   return {
@@ -184,7 +301,7 @@ function capitalizeValue(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-// Helper function to generate personalized insights
+// Helper function to generate personalized insights (existing logic)
 function generatePersonalizedInsights(name: string, ratings: Record<string, number>, rowData: Record<string, unknown>, columns: string[]) {
   const firstName = name.split(' ')[0];
   const averageRating = Object.values(ratings).reduce((sum, rating) => sum + rating, 0) / 4;
@@ -232,7 +349,7 @@ function generatePersonalizedInsights(name: string, ratings: Record<string, numb
 }
 
 // Helper function to calculate average ratings across all employees
-function calculateAverageRatings(employees: EmployeeReport[]) {
+function calculateAverageRatings(employees: Array<{ valueRatings: Record<string, number> }>) {
   const totals = {
     collaboration: 0,
     communication: 0,
