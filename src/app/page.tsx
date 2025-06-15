@@ -116,15 +116,15 @@ export default function Home() {
     
     if (savedHistory) {
       try {
-        const parsedHistory = JSON.parse(savedHistory).map((item: any) => ({
+        const parsedHistory = JSON.parse(savedHistory).map((item: Omit<FileAnalysisHistory, 'uploadDate'> & { uploadDate: string }) => ({
           ...item,
           uploadDate: new Date(item.uploadDate)
         }));
         setAnalysisHistory(parsedHistory);
         
-        if (savedCurrentId && parsedHistory.find((a: any) => a.id === savedCurrentId)) {
+        if (savedCurrentId && parsedHistory.find((a: FileAnalysisHistory) => a.id === savedCurrentId)) {
           setCurrentAnalysisId(savedCurrentId);
-          const currentAnalysis = parsedHistory.find((a: any) => a.id === savedCurrentId);
+          const currentAnalysis = parsedHistory.find((a: FileAnalysisHistory) => a.id === savedCurrentId);
           if (currentAnalysis) {
             setReportData(currentAnalysis.reportData);
           }
