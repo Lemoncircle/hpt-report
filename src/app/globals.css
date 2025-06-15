@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles for better typography and user experience */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply text-slate-900 bg-slate-50;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Custom scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+
+  /* Print styles for PDF generation */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    
+    body {
+      @apply bg-white text-black;
+    }
+  }
+}
+
+/* Custom component styles */
+@layer components {
+  .upload-zone {
+    @apply border-2 border-dashed rounded-lg p-12 text-center transition-all duration-200 cursor-pointer;
+  }
+
+  .upload-zone:hover {
+    @apply border-slate-400 bg-slate-50 transform scale-[1.01];
+  }
+
+  .upload-zone.active {
+    @apply border-blue-400 bg-blue-50 transform scale-[1.01];
+  }
+
+  .report-section {
+    @apply mb-8 last:mb-0;
+  }
+
+  .report-section h3 {
+    @apply text-lg font-semibold text-slate-900 mb-4 border-b border-slate-200 pb-2;
+  }
+
+  .spinner {
+    @apply animate-spin rounded-full border-b-2 border-current;
+  }
+
+  /* Animation classes */
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive design enhancements */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Focus styles for accessibility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
+
+  /* Custom shadows */
+  .shadow-soft {
+    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  }
+}
