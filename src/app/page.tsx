@@ -22,7 +22,12 @@ import {
   Star,
   BarChart3,
   Award,
-  Info
+  Info,
+  History,
+  Clock,
+  FileText,
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import jsPDF from 'jspdf';
@@ -79,6 +84,16 @@ interface ReportData {
   };
 }
 
+// New interface for file history
+interface FileAnalysisHistory {
+  id: string;
+  fileName: string;
+  uploadDate: Date;
+  reportData: ReportData;
+  fileSize: number;
+  processingTime: number;
+}
+
 export default function Home() {
   // State management for the application
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -88,6 +103,57 @@ export default function Home() {
   const [selectedEmployee, setSelectedEmployee] = useState<number>(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  
+  // New state for multi-file analysis and history
+  const [analysisHistory, setAnalysisHistory] = useState<FileAnalysisHistory[]>([]);
+  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Load history from localStorage on component mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('hpt-analysis-history');
+    const savedCurrentId = localStorage.getItem('hpt-current-analysis-id');
+    
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory).map((item: any) => ({
+          ...item,
+          uploadDate: new Date(item.uploadDate)
+        }));
+        setAnalysisHistory(parsedHistory);
+        
+        if (savedCurrentId && parsedHistory.find((a: any) => a.id === savedCurrentId)) {
+          setCurrentAnalysisId(savedCurrentId);
+          const currentAnalysis = parsedHistory.find((a: any) => a.id === savedCurrentId);
+          if (currentAnalysis) {
+            setReportData(currentAnalysis.reportData);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading analysis history:', error);
+        localStorage.removeItem('hpt-analysis-history');
+        localStorage.removeItem('hpt-current-analysis-id');
+      }
+    }
+  }, []);
+
+  // Save history to localStorage whenever it changes
+  useEffect(() => {
+    if (analysisHistory.length > 0) {
+      localStorage.setItem('hpt-analysis-history', JSON.stringify(analysisHistory));
+    } else {
+      localStorage.removeItem('hpt-analysis-history');
+    }
+  }, [analysisHistory]);
+
+  // Save current analysis ID to localStorage
+  useEffect(() => {
+    if (currentAnalysisId) {
+      localStorage.setItem('hpt-current-analysis-id', currentAnalysisId);
+    } else {
+      localStorage.removeItem('hpt-current-analysis-id');
+    }
+  }, [currentAnalysisId]);
 
   // Configure dropzone for file upload
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -100,8 +166,7 @@ export default function Home() {
       if (acceptedFiles.length > 0) {
         setUploadedFile(acceptedFiles[0]);
         setError(null);
-        setSelectedEmployee(0);
-        setSearchTerm('');
+        setActiveTooltip(null);
         analyzeFile(acceptedFiles[0]);
       }
     }
@@ -111,6 +176,7 @@ export default function Home() {
   const analyzeFile = async (file: File) => {
     setIsAnalyzing(true);
     setError(null);
+    const startTime = Date.now();
 
     try {
       // Create form data to send the file to our API
@@ -129,7 +195,24 @@ export default function Home() {
       }
 
       const result = await response.json();
+      const processingTime = Date.now() - startTime;
+      
+      // Create new analysis history entry
+      const newAnalysis: FileAnalysisHistory = {
+        id: Date.now().toString(),
+        fileName: file.name,
+        uploadDate: new Date(),
+        reportData: result.report,
+        fileSize: file.size,
+        processingTime
+      };
+
+      // Add to history and set as current
+      setAnalysisHistory(prev => [newAnalysis, ...prev]);
+      setCurrentAnalysisId(newAnalysis.id);
       setReportData(result.report);
+      setSelectedEmployee(0);
+      setSearchTerm('');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to analyze the file. Please ensure it\'s a valid Excel file.';
       setError(errorMessage);
@@ -137,6 +220,63 @@ export default function Home() {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  // Load analysis from history
+  const loadAnalysisFromHistory = (analysisId: string) => {
+    const analysis = analysisHistory.find(a => a.id === analysisId);
+    if (analysis) {
+      setCurrentAnalysisId(analysisId);
+      setReportData(analysis.reportData);
+      setSelectedEmployee(0);
+      setSearchTerm('');
+      setShowHistory(false);
+    }
+  };
+
+  // Delete analysis from history
+  const deleteAnalysisFromHistory = (analysisId: string) => {
+    setAnalysisHistory(prev => prev.filter(a => a.id !== analysisId));
+    if (currentAnalysisId === analysisId) {
+      // If deleting current analysis, switch to most recent or clear
+      const remaining = analysisHistory.filter(a => a.id !== analysisId);
+      if (remaining.length > 0) {
+        loadAnalysisFromHistory(remaining[0].id);
+      } else {
+        setCurrentAnalysisId(null);
+        setReportData(null);
+        setUploadedFile(null);
+      }
+    }
+  };
+
+  // Clear all history
+  const clearAllHistory = () => {
+    setAnalysisHistory([]);
+    setCurrentAnalysisId(null);
+    setReportData(null);
+    setUploadedFile(null);
+    setShowHistory(false);
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Format date
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   };
 
   // Generate and download PDF report for current employee
@@ -230,11 +370,14 @@ export default function Home() {
               </div>
             </div>
             {reportData && (
-              <div className="flex items-center space-x-8 text-sm">
+              <div className="flex items-center space-x-6 text-sm">
+                {/* Current File Info */}
                 <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 rounded-lg">
                   <Users className="h-4 w-4 text-blue-600" />
                   <span className="font-semibold text-blue-900">{reportData.totalEmployees} Employees</span>
                 </div>
+                
+                {/* AI Status */}
                 <div className="flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-lg">
                   {reportData.processingInfo.aiEnabled ? (
                     <>
@@ -258,6 +401,24 @@ export default function Home() {
                     </>
                   )}
                 </div>
+
+                {/* History Controls */}
+                <div className="flex items-center space-x-3">
+                  {analysisHistory.length > 0 && (
+                    <div className="flex items-center space-x-2 px-3 py-2 bg-emerald-50 rounded-lg">
+                      <History className="h-4 w-4 text-emerald-600" />
+                      <span className="font-semibold text-emerald-900">{analysisHistory.length} Files</span>
+                    </div>
+                  )}
+                  
+                  <button
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors duration-200 font-semibold"
+                  >
+                    <History className="h-4 w-4" />
+                    <span>History</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -265,6 +426,107 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* History Panel */}
+        {showHistory && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <History className="h-6 w-6 text-indigo-600" />
+                <h2 className="text-xl font-bold text-gray-900">Analysis History</h2>
+                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  {analysisHistory.length} files
+                </span>
+              </div>
+              <div className="flex items-center space-x-3">
+                {analysisHistory.length > 0 && (
+                  <button
+                    onClick={clearAllHistory}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors duration-200 text-sm font-semibold"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Clear All</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 text-sm font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {analysisHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analysis History</h3>
+                <p className="text-gray-600">Upload and analyze files to see them here</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {analysisHistory.map((analysis) => (
+                  <div
+                    key={analysis.id}
+                    className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md ${
+                      currentAnalysisId === analysis.id
+                        ? 'border-indigo-200 bg-indigo-50'
+                        : 'border-gray-200 hover:border-indigo-200'
+                    }`}
+                    onClick={() => loadAnalysisFromHistory(analysis.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                          currentAnalysisId === analysis.id ? 'bg-indigo-100' : 'bg-gray-100'
+                        }`}>
+                          <FileSpreadsheet className={`h-6 w-6 ${
+                            currentAnalysisId === analysis.id ? 'text-indigo-600' : 'text-gray-600'
+                          }`} />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
+                            <span>{analysis.fileName}</span>
+                            {currentAnalysisId === analysis.id && (
+                              <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+                                Current
+                              </span>
+                            )}
+                          </h4>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-3 w-3" />
+                              <span>{formatDate(analysis.uploadDate)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Users className="h-3 w-3" />
+                              <span>{analysis.reportData.totalEmployees} employees</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <FileText className="h-3 w-3" />
+                              <span>{formatFileSize(analysis.fileSize)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteAnalysisFromHistory(analysis.id);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Enhanced Upload Section */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full -translate-y-16 translate-x-16"></div>
@@ -273,11 +535,20 @@ export default function Home() {
           <div className="relative max-w-3xl mx-auto">
             <div className="text-center mb-8">
               <div className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-50 rounded-full mb-4">
-                <Upload className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-700">Upload & Analyze</span>
+                {reportData ? <Plus className="h-4 w-4 text-blue-600" /> : <Upload className="h-4 w-4 text-blue-600" />}
+                <span className="text-sm font-semibold text-blue-700">
+                  {reportData ? 'Upload Another File' : 'Upload & Analyze'}
+                </span>
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">Transform Your Employee Data</h2>
-              <p className="text-lg text-gray-600">Upload your Excel file to generate comprehensive AI-powered performance reports</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                {reportData ? 'Add Another Analysis' : 'Transform Your Employee Data'}
+              </h2>
+              <p className="text-lg text-gray-600">
+                {reportData 
+                  ? 'Upload additional Excel files to compare performance across different periods or teams'
+                  : 'Upload your Excel file to generate comprehensive AI-powered performance reports'
+                }
+              </p>
             </div>
             
             <div
@@ -290,7 +561,7 @@ export default function Home() {
             >
               <input {...getInputProps()} />
               
-              {uploadedFile ? (
+              {uploadedFile && !reportData ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-center space-x-3">
                     <div className="relative">
@@ -308,6 +579,41 @@ export default function Home() {
                       <CheckCircle className="h-4 w-4" />
                       <span className="font-semibold">Ready for Analysis</span>
                     </div>
+                  </div>
+                </div>
+              ) : reportData ? (
+                <div className="space-y-6">
+                  {/* Current File Info */}
+                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 border border-indigo-100">
+                    <div className="flex items-center justify-center space-x-4 mb-4">
+                      <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <FileSpreadsheet className="h-6 w-6 text-indigo-600" />
+                      </div>
+                      <div className="text-center">
+                        <h3 className="font-semibold text-indigo-900">
+                          {analysisHistory.find(a => a.id === currentAnalysisId)?.fileName || 'Current Analysis'}
+                        </h3>
+                        <p className="text-sm text-indigo-700">
+                          {reportData.totalEmployees} employees • AI-powered insights
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Upload Another File */}
+                  <div className="text-center">
+                    <div className="relative">
+                      <Plus className={`mx-auto h-12 w-12 transition-all duration-300 ${
+                        isDragActive ? 'text-blue-500 scale-110' : 'text-gray-400'
+                      }`} />
+                      {isDragActive && (
+                        <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping"></div>
+                      )}
+                    </div>
+                    <p className="text-lg font-semibold text-gray-900 mb-2 mt-4">
+                      {isDragActive ? 'Drop your file here' : 'Upload another Excel file'}
+                    </p>
+                    <p className="text-gray-600">Compare different periods, teams, or departments</p>
                   </div>
                 </div>
               ) : (
