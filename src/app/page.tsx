@@ -351,6 +351,93 @@ export default function Home() {
         {/* Employee Reports Section */}
         {reportData && (
           <div className="space-y-8">
+            {/* Enhanced Employee List - Moved to top */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                  <Users className="h-6 w-6 text-blue-600" />
+                  <h3 className="text-xl font-bold text-gray-900">Team Members</h3>
+                  <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    {reportData.totalEmployees} employees
+                  </span>
+                </div>
+                <button
+                  onClick={downloadPDF}
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Export Report</span>
+                </button>
+              </div>
+              
+              {/* Enhanced Search */}
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search employees..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50/50 hover:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Enhanced Employee Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredEmployees.map((employee, index) => {
+                  const employeeIndex = reportData.employees.findIndex(e => e.name === employee.name);
+                  const performance = getPerformanceLevel(employee.valueRatings);
+                  const averageRating = Object.values(employee.valueRatings).reduce((sum, rating) => sum + rating, 0) / 4;
+                  
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedEmployee(employeeIndex)}
+                      className={`text-left p-5 rounded-xl border transition-all duration-200 hover:shadow-lg ${
+                        selectedEmployee === employeeIndex
+                          ? 'border-blue-500 bg-blue-50 shadow-lg scale-[1.02]'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${performance.bg} border border-white shadow-sm`}>
+                            <User className={`h-6 w-6 ${performance.color}`} />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
+                              <span>{employee.name}</span>
+                              {employee.isAiEnhanced && (
+                                <Brain className="h-3 w-3 text-purple-500" />
+                              )}
+                            </h4>
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              performance.level === 'Exceptional' ? 'bg-emerald-100 text-emerald-800' :
+                              performance.level === 'Strong' ? 'bg-blue-100 text-blue-800' :
+                              performance.level === 'Developing' ? 'bg-amber-100 text-amber-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {performance.level}
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronRight className={`h-5 w-5 transition-transform duration-200 ${
+                          selectedEmployee === employeeIndex ? 'rotate-90 text-blue-500' : 'text-gray-400'
+                        }`} />
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600 font-medium">Top: {employee.topValueObserved}</span>
+                        <span className="font-bold text-gray-900 text-lg">{averageRating.toFixed(1)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Enhanced Employee Profile Header */}
             {currentEmployee && (
               <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -561,90 +648,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-
-            {/* Enhanced Employee List */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                  <Users className="h-6 w-6 text-blue-600" />
-                  <h3 className="text-xl font-bold text-gray-900">Team Members</h3>
-                </div>
-                <button
-                  onClick={downloadPDF}
-                  className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold"
-                >
-                  <Download className="h-4 w-4" />
-                  <span>Export Report</span>
-                </button>
-              </div>
-              
-              {/* Enhanced Search */}
-              <div className="mb-6">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search employees..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50/50 hover:bg-white"
-                  />
-                </div>
-              </div>
-
-              {/* Enhanced Employee Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredEmployees.map((employee, index) => {
-                  const employeeIndex = reportData.employees.findIndex(e => e.name === employee.name);
-                  const performance = getPerformanceLevel(employee.valueRatings);
-                  const averageRating = Object.values(employee.valueRatings).reduce((sum, rating) => sum + rating, 0) / 4;
-                  
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedEmployee(employeeIndex)}
-                      className={`text-left p-5 rounded-xl border transition-all duration-200 hover:shadow-lg ${
-                        selectedEmployee === employeeIndex
-                          ? 'border-blue-500 bg-blue-50 shadow-lg scale-[1.02]'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${performance.bg} border border-white shadow-sm`}>
-                            <User className={`h-6 w-6 ${performance.color}`} />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900 flex items-center space-x-2">
-                              <span>{employee.name}</span>
-                              {employee.isAiEnhanced && (
-                                <Brain className="h-3 w-3 text-purple-500" />
-                              )}
-                            </h4>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              performance.level === 'Exceptional' ? 'bg-emerald-100 text-emerald-800' :
-                              performance.level === 'Strong' ? 'bg-blue-100 text-blue-800' :
-                              performance.level === 'Developing' ? 'bg-amber-100 text-amber-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {performance.level}
-                            </span>
-                          </div>
-                        </div>
-                        <ChevronRight className={`h-5 w-5 transition-transform duration-200 ${
-                          selectedEmployee === employeeIndex ? 'rotate-90 text-blue-500' : 'text-gray-400'
-                        }`} />
-                      </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 font-medium">Top: {employee.topValueObserved}</span>
-                        <span className="font-bold text-gray-900 text-lg">{averageRating.toFixed(1)}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Enhanced Team Overview */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
