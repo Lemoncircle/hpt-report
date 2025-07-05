@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { DocumentContext } from './document-service';
 
 // Interface for AI-enhanced insights
 interface AIInsights {
@@ -10,6 +11,7 @@ interface AIInsights {
   strengthsAnalysis: string;
   riskFactors: string[];
   successPredictors: string[];
+  hasDocumentContext: boolean;
 }
 
 // Interface for Perplexity API response
@@ -61,7 +63,8 @@ export class AIPerformanceAnalyzer {
       averageRatings: Record<string, number>;
       teamSize: number;
       industryBenchmarks?: Record<string, number>;
-    }
+    },
+    documentContext?: DocumentContext[]
   ): Promise<AIInsights | null> {
     
     if (!this.isEnabled) {
@@ -78,13 +81,13 @@ export class AIPerformanceAnalyzer {
       console.log(`Generating AI insights for ${employeeData.name}...`);
       
       // Create comprehensive prompt for Perplexity
-      const prompt = this.buildAnalysisPrompt(employeeData, teamContext);
+      const prompt = this.buildAnalysisPrompt(employeeData, teamContext, documentContext);
       
       // Make API call to Perplexity
       const response = await this.callPerplexityAPI(prompt);
       
       // Parse and structure the AI response
-      const insights = this.parseAIResponse(response);
+      const insights = this.parseAIResponse(response, documentContext);
       
       console.log(`✅ AI insights generated successfully for ${employeeData.name}`);
       return insights;
@@ -117,12 +120,14 @@ export class AIPerformanceAnalyzer {
       averageRatings: Record<string, number>;
       teamSize: number;
       industryBenchmarks?: Record<string, number>;
-    }
+    },
+    documentContext?: DocumentContext[]
   ): string {
     
     const { name, ratings, feedback, role, department, tenure } = employeeData;
     
-    const prompt = `As an expert HR performance analyst, provide a comprehensive analysis for employee performance review.
+    // Build the base prompt with employee and team context
+    let prompt = `As an expert HR performance analyst, provide a comprehensive analysis for employee performance review.
 
 EMPLOYEE PROFILE:
 - Name: ${name}
@@ -140,9 +145,25 @@ ${teamContext ? `TEAM CONTEXT:
 - Team Size: ${teamContext.teamSize} employees
 - Team Averages: ${Object.entries(teamContext.averageRatings).map(([key, value]) => `${key}: ${value}`).join(', ')}
 ${teamContext.industryBenchmarks ? `- Industry Benchmarks: ${Object.entries(teamContext.industryBenchmarks).map(([key, value]) => `${key}: ${value}`).join(', ')}` : ''}
-` : ''}
+` : ''}`;
 
-Please provide a detailed analysis in the following JSON format:
+    // Add document context if provided
+    if (documentContext && documentContext.length > 0) {
+      const contextTexts = documentContext.map(doc => 
+        `=== ${doc.fileName} ===\n${doc.extractedText}`
+      ).join('\n\n');
+      
+      prompt += `\nORGANIZATION-SPECIFIC CONTEXT:
+The following documents provide context about this organization's policies, procedures, and expectations. Use this information to provide more relevant and specific recommendations:
+
+${contextTexts}
+
+IMPORTANT: Base your analysis on the specific organizational context provided above. Reference relevant policies, procedures, or organizational values when making recommendations.
+
+`;
+    }
+
+    prompt += `Please provide a detailed analysis in the following JSON format:
 {
   "enhancedSummary": "Comprehensive 2-3 sentence performance summary with specific insights",
   "behavioralRecommendations": "Specific, actionable behavioral changes and development strategies",
@@ -161,6 +182,7 @@ Focus on:
 4. Future performance predictions
 5. Leadership potential assessment
 6. Career development pathways
+${documentContext && documentContext.length > 0 ? '7. Organization-specific context and policy alignment' : ''}
 
 Provide only the JSON response, no additional text.`;
 
@@ -201,7 +223,7 @@ Provide only the JSON response, no additional text.`;
   }
 
   // Parse AI response and structure it
-  private parseAIResponse(aiResponse: string): AIInsights {
+  private parseAIResponse(aiResponse: string, documentContext?: DocumentContext[]): AIInsights {
     try {
       // Try to parse as JSON first
       const cleanResponse = aiResponse.trim();
@@ -221,7 +243,8 @@ Provide only the JSON response, no additional text.`;
           developmentPriorities: Array.isArray(parsed.developmentPriorities) ? parsed.developmentPriorities : ['Professional development', 'Skill enhancement'],
           strengthsAnalysis: parsed.strengthsAnalysis || 'Strong performance in key areas.',
           riskFactors: Array.isArray(parsed.riskFactors) ? parsed.riskFactors : [],
-          successPredictors: Array.isArray(parsed.successPredictors) ? parsed.successPredictors : ['Consistent performance', 'Team collaboration']
+          successPredictors: Array.isArray(parsed.successPredictors) ? parsed.successPredictors : ['Consistent performance', 'Team collaboration'],
+          hasDocumentContext: !!(documentContext && documentContext.length > 0)
         };
       }
     } catch (error) {
@@ -229,11 +252,11 @@ Provide only the JSON response, no additional text.`;
     }
 
     // Fallback: parse as text and structure it
-    return this.parseTextResponse(aiResponse);
+    return this.parseTextResponse(aiResponse, documentContext);
   }
 
   // Parse non-JSON AI response
-  private parseTextResponse(aiResponse: string): AIInsights {
+  private parseTextResponse(aiResponse: string, documentContext?: DocumentContext[]): AIInsights {
     const lines = aiResponse.split('\n').filter(line => line.trim());
     
     return {
@@ -244,7 +267,8 @@ Provide only the JSON response, no additional text.`;
       developmentPriorities: ['Professional growth', 'Skill development', 'Leadership potential'],
       strengthsAnalysis: lines.slice(6, 8).join(' ') || 'Strong foundational skills identified.',
       riskFactors: ['Performance consistency', 'Skill gap areas'],
-      successPredictors: ['Team collaboration', 'Continuous learning', 'Goal achievement']
+      successPredictors: ['Team collaboration', 'Continuous learning', 'Goal achievement'],
+      hasDocumentContext: !!(documentContext && documentContext.length > 0)
     };
   }
 
@@ -290,7 +314,8 @@ Provide only the JSON response, no additional text.`;
       developmentPriorities: this.generateDevelopmentPriorities(performanceLevel, growthArea),
       strengthsAnalysis: `${firstName} demonstrates particular strength in ${topStrength}, which serves as a foundation for continued growth and team contribution.`,
       riskFactors: this.generateRiskFactors(performanceLevel),
-      successPredictors: this.generateSuccessPredictors(performanceLevel, topStrength)
+      successPredictors: this.generateSuccessPredictors(performanceLevel, topStrength),
+      hasDocumentContext: false
     };
   }
 
@@ -361,7 +386,8 @@ Provide only the JSON response, no additional text.`;
       feedback?: string;
       role?: string;
       department?: string;
-    }>
+    }>,
+    documentContext?: DocumentContext[]
   ): Promise<{
     overallTrends: string;
     riskAreas: string[];
@@ -387,7 +413,7 @@ Provide only the JSON response, no additional text.`;
     try {
       console.log(`Generating AI team insights for ${teamData.length} employees...`);
       
-      const prompt = this.buildTeamAnalysisPrompt(teamData);
+      const prompt = this.buildTeamAnalysisPrompt(teamData, documentContext);
       const response = await this.callPerplexityAPI(prompt);
       const insights = this.parseTeamAnalysisResponse(response);
       
@@ -408,25 +434,45 @@ Provide only the JSON response, no additional text.`;
     }
   }
 
-  private buildTeamAnalysisPrompt(teamData: Array<{ name: string; ratings: Record<string, number>; feedback?: string; role?: string; department?: string }>): string {
+  private buildTeamAnalysisPrompt(teamData: Array<{ name: string; ratings: Record<string, number>; feedback?: string; role?: string; department?: string }>, documentContext?: DocumentContext[]): string {
     const teamSummary = teamData.map(emp => ({
       name: emp.name,
       average: (Object.values(emp.ratings) as number[]).reduce((sum: number, r: number) => sum + r, 0) / Object.keys(emp.ratings).length,
       ratings: emp.ratings
     }));
 
-    return `Analyze this team performance data and provide insights in JSON format:
+    let prompt = `Analyze this team performance data and provide insights in JSON format:
 
 TEAM DATA:
 ${teamSummary.map(emp => `- ${emp.name}: ${emp.average.toFixed(1)}/5.0 (${Object.entries(emp.ratings).map(([k,v]) => `${k}:${v}`).join(', ')})`).join('\n')}
 
-Provide analysis in this JSON format:
+`;
+
+    // Add document context if provided
+    if (documentContext && documentContext.length > 0) {
+      const contextTexts = documentContext.map(doc => 
+        `=== ${doc.fileName} ===\n${doc.extractedText}`
+      ).join('\n\n');
+      
+      prompt += `ORGANIZATION-SPECIFIC CONTEXT:
+The following documents provide context about this organization's policies, procedures, and expectations. Use this information to provide more relevant team recommendations:
+
+${contextTexts}
+
+IMPORTANT: Base your team analysis on the specific organizational context provided above. Reference relevant policies, procedures, or organizational values when making recommendations.
+
+`;
+    }
+
+    prompt += `Provide analysis in this JSON format:
 {
   "overallTrends": "Team performance trends and patterns",
   "riskAreas": ["Risk area 1", "Risk area 2"],
   "strengthAreas": ["Strength area 1", "Strength area 2"],
   "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"]
 }`;
+
+    return prompt;
   }
 
   private parseTeamAnalysisResponse(response: string): { overallTrends: string; riskAreas: string[]; strengthAreas: string[]; recommendations: string[] } {

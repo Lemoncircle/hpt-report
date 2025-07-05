@@ -56,6 +56,7 @@ interface EmployeeReport {
     strengthsAnalysis: string;
     riskFactors: string[];
     successPredictors: string[];
+    hasDocumentContext: boolean;
   };
   isAiEnhanced: boolean;
 }
@@ -92,6 +93,15 @@ interface FileAnalysisHistory {
   reportData: ReportData;
   fileSize: number;
   processingTime: number;
+  documentContext?: DocumentContext[];
+}
+
+// Interface for document context
+interface DocumentContext {
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadDate: Date;
 }
 
 export default function Home() {
@@ -108,6 +118,10 @@ export default function Home() {
   const [analysisHistory, setAnalysisHistory] = useState<FileAnalysisHistory[]>([]);
   const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  
+  // State for document context
+  const [contextDocuments, setContextDocuments] = useState<File[]>([]);
+  const [showContextUpload, setShowContextUpload] = useState(false);
 
   // Load history from localStorage on component mount
   useEffect(() => {
@@ -183,6 +197,11 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
 
+      // Add context documents if any
+      contextDocuments.forEach(doc => {
+        formData.append('contextFiles', doc);
+      });
+
       // Call our analysis API endpoint
       const response = await fetch('/api/analyze', {
         method: 'POST',
@@ -204,7 +223,8 @@ export default function Home() {
         uploadDate: new Date(),
         reportData: result.report,
         fileSize: file.size,
-        processingTime
+        processingTime,
+        documentContext: result.documentContext
       };
 
       // Add to history and set as current
@@ -550,6 +570,113 @@ export default function Home() {
                 }
               </p>
             </div>
+
+            {/* Document Context Upload Section */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                    <Brain className="h-5 w-5 text-purple-600" />
+                    <span>Context Documents</span>
+                    <span className="text-sm font-normal text-gray-500">(Optional)</span>
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Upload organizational documents to provide context for more specific AI analysis
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowContextUpload(!showContextUpload)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors duration-200"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>{showContextUpload ? 'Hide' : 'Add Context'}</span>
+                </button>
+              </div>
+
+              {showContextUpload && (
+                <div className="bg-purple-50/30 border border-purple-200 rounded-xl p-6">
+                  <div className="mb-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Info className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm font-medium text-purple-900">Supported file types:</span>
+                    </div>
+                    <p className="text-sm text-purple-700">
+                      Text files (.txt), Markdown (.md), RTF documents - PDFs and Word documents coming soon
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div
+                      className="border-2 border-dashed border-purple-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors duration-200 cursor-pointer"
+                      onClick={() => document.getElementById('context-file-input')?.click()}
+                    >
+                      <FileText className="h-8 w-8 text-purple-400 mx-auto mb-2" />
+                      <p className="text-sm text-purple-700 font-medium">
+                        Click to upload context documents
+                      </p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        Policies, procedures, org charts, guidelines
+                      </p>
+                    </div>
+                    
+                    <input
+                      id="context-file-input"
+                      type="file"
+                      multiple
+                      accept=".txt,.md,.rtf"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setContextDocuments(prev => [...prev, ...files]);
+                      }}
+                      className="hidden"
+                    />
+
+                    {contextDocuments.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-purple-900">Uploaded Context Documents:</h4>
+                        {contextDocuments.map((doc, index) => (
+                          <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-purple-200">
+                            <div className="flex items-center space-x-3">
+                              <FileText className="h-4 w-4 text-purple-600" />
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{doc.name}</p>
+                                <p className="text-xs text-gray-500">{formatFileSize(doc.size)}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setContextDocuments(prev => prev.filter((_, i) => i !== index))}
+                              className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 transition-colors duration-200"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => setContextDocuments([])}
+                          className="text-sm text-purple-600 hover:text-purple-800 underline"
+                        >
+                          Clear all context documents
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {contextDocuments.length > 0 && !showContextUpload && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Brain className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-900">
+                      {contextDocuments.length} context document{contextDocuments.length > 1 ? 's' : ''} ready
+                    </span>
+                  </div>
+                  <p className="text-sm text-purple-700">
+                    AI analysis will use these documents to provide organization-specific insights
+                  </p>
+                </div>
+              )}
+            </div>
             
             <div
               {...getRootProps()}
@@ -795,7 +922,12 @@ export default function Home() {
                         {currentEmployee.isAiEnhanced && (
                           <span className="inline-flex items-center space-x-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium text-white border border-white/30">
                             <Brain className="h-3 w-3" />
-                            <span>AI Enhanced</span>
+                            <span>
+                              {currentEmployee.aiInsights?.hasDocumentContext 
+                                ? 'Organization-Specific Analysis' 
+                                : 'AI-Powered Analysis'
+                              }
+                            </span>
                           </span>
                         )}
                       </div>
@@ -818,6 +950,29 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
+                {/* Document Context Summary */}
+                {currentEmployee.isAiEnhanced && currentEmployee.aiInsights?.hasDocumentContext && (
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-t border-purple-100 px-8 py-6">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <h4 className="font-semibold text-purple-900">Organization-Specific Context</h4>
+                    </div>
+                    <p className="text-sm text-purple-800 leading-relaxed">
+                      This analysis incorporates your organization&apos;s specific documents and context to provide more relevant insights and recommendations tailored to your company&apos;s policies and culture.
+                    </p>
+                    {analysisHistory.find(h => h.id === currentAnalysisId)?.documentContext && (
+                      <div className="mt-4 flex items-center space-x-2 text-xs text-purple-700">
+                        <Info className="h-3 w-3" />
+                        <span>
+                          Based on {analysisHistory.find(h => h.id === currentAnalysisId)?.documentContext?.length} context document(s)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Enhanced Stats Grid with Tooltips */}
                 <div className="p-8">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { aiAnalyzer } from '@/lib/ai-service';
+import { DocumentContext, documentProcessor } from '@/lib/document-service';
 
 // Define the structure of individual employee report with AI enhancements
 interface EmployeeReport {
@@ -78,6 +79,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Process optional document context files
+    const documentContext: DocumentContext[] = [];
+    const contextFiles = formData.getAll('contextFiles') as File[];
+    
+    if (contextFiles.length > 0) {
+      console.log(`Processing ${contextFiles.length} context document(s)...`);
+      
+      for (const contextFile of contextFiles) {
+        try {
+          const processedDoc = await documentProcessor.processDocument(contextFile);
+          documentContext.push(processedDoc);
+          console.log(`✅ Processed context document: ${contextFile.name}`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to process context document ${contextFile.name}:`, error);
+          // Continue processing other files even if one fails
+        }
+      }
+    }
+
     // Read and parse the Excel file
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: 'buffer' });
@@ -88,7 +108,7 @@ export async function POST(request: NextRequest) {
     const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
     // Analyze the survey data and generate individual employee reports with AI enhancement
-    const reportData = await analyzeEmployeeDataWithAI(jsonData);
+    const reportData = await analyzeEmployeeDataWithAI(jsonData, documentContext);
     
     const processingTime = Date.now() - startTime;
     reportData.processingInfo.processingTime = processingTime;
@@ -97,7 +117,13 @@ export async function POST(request: NextRequest) {
       report: reportData,
       filename: file.name,
       processedAt: new Date().toISOString(),
-      processingTimeMs: processingTime
+      processingTimeMs: processingTime,
+      documentContext: documentContext.length > 0 ? documentContext.map(doc => ({
+        fileName: doc.fileName,
+        fileType: doc.fileType,
+        fileSize: doc.fileSize,
+        uploadDate: doc.uploadDate
+      })) : undefined
     });
 
   } catch (error) {
@@ -110,7 +136,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Enhanced function to analyze employee survey data with AI integration
-async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promise<ReportData> {
+async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[], documentContext?: DocumentContext[]): Promise<ReportData> {
   // Simulate processing time for UI feedback
   await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -159,7 +185,7 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
         };
 
         // Get AI-enhanced insights (now prioritizing AI analysis)
-        const aiInsights = await aiAnalyzer.getEnhancedInsights(employeeData, teamContext);
+        const aiInsights = await aiAnalyzer.getEnhancedInsights(employeeData, teamContext, documentContext);
         
         if (aiInsights) {
           aiSuccessCount++;
@@ -209,7 +235,7 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[]): Promi
       department: undefined as string | undefined,
     }));
 
-    teamInsights = await aiAnalyzer.analyzeTeamTrends(teamData);
+    teamInsights = await aiAnalyzer.analyzeTeamTrends(teamData, documentContext);
     
     if (teamInsights) {
       console.log('✅ Team AI insights generated successfully');
