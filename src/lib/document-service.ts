@@ -1,4 +1,5 @@
 // Document processing service for context extraction
+
 export interface DocumentContext {
   id: string;
   fileName: string;
@@ -32,7 +33,7 @@ export class DocumentProcessor {
    * Get supported file types for display
    */
   static getSupportedTypes(): string[] {
-    return ['PDF', 'Word Documents', 'Text Files', 'Markdown', 'RTF'];
+    return ['PDF Documents', 'Word Documents (.docx)', 'Text Files', 'Markdown', 'RTF'];
   }
 
   /**
@@ -75,11 +76,11 @@ export class DocumentProcessor {
           extractedText = await this.extractTextFromPlainText(buffer);
           break;
         case 'application/pdf':
-          extractedText = await this.extractTextFromPDF();
+          extractedText = await this.extractTextFromPDF(buffer);
           break;
         case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         case 'application/msword':
-          extractedText = await this.extractTextFromWord();
+          extractedText = await this.extractTextFromWord(buffer);
           break;
         case 'application/rtf':
           extractedText = await this.extractTextFromRTF(buffer);
@@ -116,25 +117,35 @@ export class DocumentProcessor {
   }
 
   /**
-   * Extract text from PDF files
-   * Note: This is a simplified implementation. In a production environment,
-   * you would use a proper PDF parsing library like pdf-parse or pdfjs-dist
+   * Extract text from PDF files using pdf-parse library
    */
-  private static async extractTextFromPDF(): Promise<string> {
-    // For now, we'll return a placeholder. In production, you'd use a PDF parsing library
-    // This would require installing pdf-parse or similar: npm install pdf-parse
-    throw new Error('PDF processing not yet implemented. Please convert to text format or use Word documents.');
+  private static async extractTextFromPDF(buffer: ArrayBuffer): Promise<string> {
+    try {
+      // Dynamic import to avoid build-time loading
+      const pdfParse = await import('pdf-parse');
+      const nodeBuffer = Buffer.from(buffer);
+      const data = await pdfParse.default(nodeBuffer);
+      return data.text || '';
+    } catch (error) {
+      console.error('PDF parsing error:', error);
+      throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
-   * Extract text from Word documents
-   * Note: This is a simplified implementation. In a production environment,
-   * you would use a proper Word parsing library like mammoth or docx
+   * Extract text from Word documents using mammoth library
    */
-  private static async extractTextFromWord(): Promise<string> {
-    // For now, we'll return a placeholder. In production, you'd use a Word parsing library
-    // This would require installing mammoth or docx: npm install mammoth
-    throw new Error('Word document processing not yet implemented. Please convert to text format.');
+  private static async extractTextFromWord(buffer: ArrayBuffer): Promise<string> {
+    try {
+      // Dynamic import to avoid build-time loading
+      const mammoth = await import('mammoth');
+      const nodeBuffer = Buffer.from(buffer);
+      const result = await mammoth.extractRawText({ buffer: nodeBuffer });
+      return result.value || '';
+    } catch (error) {
+      console.error('Word document parsing error:', error);
+      throw new Error(`Failed to extract text from Word document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**

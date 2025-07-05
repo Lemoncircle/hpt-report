@@ -601,7 +601,7 @@ export default function Home() {
                       <span className="text-sm font-medium text-purple-900">Supported file types:</span>
                     </div>
                     <p className="text-sm text-purple-700">
-                      Text files (.txt), Markdown (.md), RTF documents - PDFs and Word documents coming soon
+                      PDF documents, Word documents (.docx), Text files (.txt), Markdown (.md), RTF documents
                     </p>
                   </div>
                   
@@ -623,7 +623,7 @@ export default function Home() {
                       id="context-file-input"
                       type="file"
                       multiple
-                      accept=".txt,.md,.rtf"
+                      accept=".pdf,.docx,.doc,.txt,.md,.rtf"
                       onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         setContextDocuments(prev => [...prev, ...files]);
