@@ -150,41 +150,69 @@ ${teamContext.industryBenchmarks ? `- Industry Benchmarks: ${Object.entries(team
     // Add document context if provided
     if (documentContext && documentContext.length > 0) {
       const contextTexts = documentContext.map(doc => 
-        `=== ${doc.fileName} ===\n${doc.extractedText}`
+        `=== DOCUMENT: ${doc.fileName} ===\n${doc.extractedText}`
       ).join('\n\n');
       
-      prompt += `\nORGANIZATION-SPECIFIC CONTEXT:
-The following documents provide context about this organization's policies, procedures, and expectations. Use this information to provide more relevant and specific recommendations:
-
+      prompt += `\n🏢 ORGANIZATION-SPECIFIC CONTEXT DOCUMENTS:
 ${contextTexts}
 
-IMPORTANT: Base your analysis on the specific organizational context provided above. Reference relevant policies, procedures, or organizational values when making recommendations.
+🎯 CRITICAL INSTRUCTIONS FOR CONTEXT USAGE:
+1. MANDATORY REFERENCE: You MUST actively reference and cite specific information from the above organizational documents in your analysis
+2. POLICY ALIGNMENT: Align all recommendations with the organization's stated policies, values, and procedures
+3. SPECIFIC CITATIONS: When making recommendations, explicitly mention which document or policy supports your suggestion
+4. CONTEXTUAL RELEVANCE: Tailor your language, priorities, and focus areas to match the organization's culture and standards
+5. AVOID GENERIC ADVICE: Do NOT provide generic HR advice - make everything specific to this organization's documented approach
+
+EXAMPLE OF EXPECTED INTEGRATION:
+- Instead of "Improve communication skills" → "Develop communication skills in line with the organization's emphasis on [specific value from documents]"
+- Instead of "Consider leadership training" → "Pursue leadership development opportunities that align with the company's [specific leadership framework from documents]"
+- Reference specific competencies, values, or procedures mentioned in the uploaded documents
 
 `;
     }
 
-    prompt += `Please provide a detailed analysis in the following JSON format:
+    prompt += `📋 ANALYSIS OUTPUT REQUIREMENTS:
+
+${documentContext && documentContext.length > 0 ? 
+`🔴 CONTEXT-ENHANCED ANALYSIS MODE:
+Since organizational documents are provided, your analysis MUST:
+- Explicitly reference specific policies, values, or procedures from the documents
+- Use organization-specific terminology and frameworks
+- Align recommendations with documented organizational standards
+- Cite specific document sources when making suggestions
+- Avoid generic HR language in favor of organization-specific approaches
+
+` : ''}Please provide a detailed analysis in the following JSON format:
 {
-  "enhancedSummary": "Comprehensive 2-3 sentence performance summary with specific insights",
-  "behavioralRecommendations": "Specific, actionable behavioral changes and development strategies",
-  "trendAnalysis": "Analysis of performance patterns and trajectory predictions",
+  "enhancedSummary": "${documentContext && documentContext.length > 0 ? 'Organization-specific performance summary that references relevant policies/values from the provided documents' : 'Comprehensive 2-3 sentence performance summary with specific insights'}",
+  "behavioralRecommendations": "${documentContext && documentContext.length > 0 ? 'Specific recommendations aligned with organizational policies and values mentioned in the documents - cite specific sources' : 'Specific, actionable behavioral changes and development strategies'}",
+  "trendAnalysis": "${documentContext && documentContext.length > 0 ? 'Performance analysis that considers organizational standards and expectations from the documents' : 'Analysis of performance patterns and trajectory predictions'}",
   "feedbackAnalysis": "Deep analysis of feedback patterns and sentiment (if feedback provided)",
-  "developmentPriorities": ["Priority 1", "Priority 2", "Priority 3"],
-  "strengthsAnalysis": "Detailed analysis of key strengths and how to leverage them",
-  "riskFactors": ["Risk factor 1", "Risk factor 2"],
-  "successPredictors": ["Success predictor 1", "Success predictor 2"]
+  "developmentPriorities": ["${documentContext && documentContext.length > 0 ? 'Priority based on organizational framework from documents' : 'Priority 1'}", "${documentContext && documentContext.length > 0 ? 'Priority aligned with company values from documents' : 'Priority 2'}", "${documentContext && documentContext.length > 0 ? 'Priority reflecting organizational culture from documents' : 'Priority 3'}"],
+  "strengthsAnalysis": "${documentContext && documentContext.length > 0 ? 'Analysis of strengths in context of organizational values and competencies from the documents' : 'Detailed analysis of key strengths and how to leverage them'}",
+  "riskFactors": ["${documentContext && documentContext.length > 0 ? 'Risk factor considering organizational standards from documents' : 'Risk factor 1'}", "${documentContext && documentContext.length > 0 ? 'Risk factor based on company expectations from documents' : 'Risk factor 2'}"],
+  "successPredictors": ["${documentContext && documentContext.length > 0 ? 'Success predictor aligned with organizational definition of success from documents' : 'Success predictor 1'}", "${documentContext && documentContext.length > 0 ? 'Success predictor based on company culture from documents' : 'Success predictor 2'}"]
 }
 
-Focus on:
+🎯 ANALYSIS FOCUS AREAS:
 1. Data-driven insights based on the ratings
 2. Contextual analysis considering team and industry benchmarks
 3. Specific, actionable recommendations
 4. Future performance predictions
 5. Leadership potential assessment
 6. Career development pathways
-${documentContext && documentContext.length > 0 ? '7. Organization-specific context and policy alignment' : ''}
+${documentContext && documentContext.length > 0 ? `7. 🔴 MANDATORY: Organization-specific context integration with explicit document references
+8. 🔴 MANDATORY: Policy and value alignment with cited sources
+9. 🔴 MANDATORY: Culture-specific language and frameworks from documents` : ''}
 
-Provide only the JSON response, no additional text.`;
+${documentContext && documentContext.length > 0 ? 
+`🚨 QUALITY CHECK: Before finalizing your response, ensure that:
+- Every major recommendation references specific organizational documents
+- You use terminology and frameworks from the provided documents
+- Your advice is tailored to this specific organization's culture and values
+- You avoid generic HR advice in favor of organization-specific guidance
+
+` : ''}Provide only the JSON response, no additional text.`;
 
     return prompt;
   }
@@ -198,7 +226,7 @@ Provide only the JSON response, no additional text.`;
         messages: [
           {
             role: 'system',
-            content: 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. Provide data-driven, actionable insights.'
+            content: 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your recommendations should be tailored to the specific organizational culture and standards rather than generic HR advice. Always cite specific sources from the provided documents when making recommendations.'
           },
           {
             role: 'user',
@@ -451,26 +479,50 @@ ${teamSummary.map(emp => `- ${emp.name}: ${emp.average.toFixed(1)}/5.0 (${Object
     // Add document context if provided
     if (documentContext && documentContext.length > 0) {
       const contextTexts = documentContext.map(doc => 
-        `=== ${doc.fileName} ===\n${doc.extractedText}`
+        `=== DOCUMENT: ${doc.fileName} ===\n${doc.extractedText}`
       ).join('\n\n');
       
-      prompt += `ORGANIZATION-SPECIFIC CONTEXT:
-The following documents provide context about this organization's policies, procedures, and expectations. Use this information to provide more relevant team recommendations:
-
+      prompt += `🏢 ORGANIZATION-SPECIFIC CONTEXT DOCUMENTS:
 ${contextTexts}
 
-IMPORTANT: Base your team analysis on the specific organizational context provided above. Reference relevant policies, procedures, or organizational values when making recommendations.
+🎯 MANDATORY CONTEXT INTEGRATION FOR TEAM ANALYSIS:
+1. REFERENCE ORGANIZATIONAL VALUES: Explicitly cite company values, culture, and standards from the documents
+2. ALIGN WITH POLICIES: Ensure all team recommendations align with documented organizational policies and procedures
+3. USE ORGANIZATION-SPECIFIC LANGUAGE: Adopt the terminology and frameworks used in the provided documents
+4. CITE SOURCES: When making recommendations, reference which specific document or policy supports your suggestion
+5. AVOID GENERIC ADVICE: Tailor all insights to this specific organization's documented approach and culture
+
+EXAMPLE INTEGRATION:
+- Instead of "Improve team communication" → "Enhance team communication in alignment with [specific communication framework from documents]"
+- Instead of "Focus on collaboration" → "Strengthen collaboration based on the organization's [specific collaboration principles from documents]"
 
 `;
     }
 
-    prompt += `Provide analysis in this JSON format:
+    prompt += `${documentContext && documentContext.length > 0 ? 
+`🔴 CONTEXT-ENHANCED TEAM ANALYSIS MODE:
+Since organizational documents are provided, your team analysis MUST:
+- Reference specific organizational values, policies, and frameworks from the documents
+- Use company-specific terminology and approaches
+- Align all recommendations with documented organizational standards
+- Cite specific sources when making team development suggestions
+
+` : ''}Provide analysis in this JSON format:
 {
-  "overallTrends": "Team performance trends and patterns",
-  "riskAreas": ["Risk area 1", "Risk area 2"],
-  "strengthAreas": ["Strength area 1", "Strength area 2"],
-  "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"]
-}`;
+  "overallTrends": "${documentContext && documentContext.length > 0 ? 'Team performance trends analyzed through the lens of organizational values and standards from the provided documents' : 'Team performance trends and patterns'}",
+  "riskAreas": ["${documentContext && documentContext.length > 0 ? 'Risk area identified based on organizational standards from documents' : 'Risk area 1'}", "${documentContext && documentContext.length > 0 ? 'Risk area considering company expectations from documents' : 'Risk area 2'}"],
+  "strengthAreas": ["${documentContext && documentContext.length > 0 ? 'Strength area aligned with organizational values from documents' : 'Strength area 1'}", "${documentContext && documentContext.length > 0 ? 'Strength area reflecting company culture from documents' : 'Strength area 2'}"],
+  "recommendations": ["${documentContext && documentContext.length > 0 ? 'Recommendation based on organizational framework from documents' : 'Recommendation 1'}", "${documentContext && documentContext.length > 0 ? 'Recommendation aligned with company policies from documents' : 'Recommendation 2'}", "${documentContext && documentContext.length > 0 ? 'Recommendation reflecting organizational values from documents' : 'Recommendation 3'}"]
+}
+
+${documentContext && documentContext.length > 0 ? 
+`🚨 QUALITY CHECK: Ensure your team analysis:
+- Explicitly references organizational documents and policies
+- Uses company-specific language and frameworks
+- Provides recommendations tailored to this organization's culture
+- Cites specific sources from the provided documents
+
+` : ''}`;
 
     return prompt;
   }
