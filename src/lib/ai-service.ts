@@ -219,35 +219,63 @@ ${documentContext && documentContext.length > 0 ?
 
   // Make API call to Perplexity
   private async callPerplexityAPI(prompt: string): Promise<string> {
-    const response = await axios.post<PerplexityResponse>(
-      this.baseURL,
-      {
-        model: 'llama-3.1-sonar-large-128k-online', // Using Perplexity's most capable model
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your recommendations should be tailored to the specific organizational culture and standards rather than generic HR advice. Always cite specific sources from the provided documents when making recommendations.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3, // Lower temperature for more consistent, analytical responses
-        top_p: 0.9,
-        stream: false
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+    
+    try {
+      const response = await axios.post<PerplexityResponse>(
+        this.baseURL,
+        {
+          model: 'llama-3.1-sonar-large-128k-online', // Using Perplexity's most capable model
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your recommendations should be tailored to the specific organizational culture and standards rather than generic HR advice. Always cite specific sources from the provided documents when making recommendations.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.3, // Lower temperature for more consistent, analytical responses
+          top_p: 0.9,
+          stream: false
         },
-        timeout: 30000 // 30 second timeout
-      }
-    );
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 45000, // 45 second timeout
+          signal: controller.signal
+        }
+      );
 
-    return response.data.choices[0]?.message?.content || '';
+      clearTimeout(timeoutId);
+      return response.data.choices[0]?.message?.content || '';
+    } catch (error) {
+      clearTimeout(timeoutId);
+      
+      // Enhanced error handling
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED' || error.name === 'AbortError') {
+          throw new Error('AI analysis timed out. Please try again with a smaller dataset.');
+        }
+        if (error.response?.status === 401) {
+          throw new Error('Invalid API key. Please check your Perplexity API key configuration.');
+        }
+        if (error.response?.status === 429) {
+          throw new Error('API rate limit exceeded. Please try again in a few minutes.');
+        }
+        if (error.response?.status && error.response.status >= 500) {
+          throw new Error('Perplexity API service unavailable. Please try again later.');
+        }
+        throw new Error(`API request failed: ${error.response?.status || 'Unknown'} - ${error.response?.statusText || error.message}`);
+      }
+      
+      throw error;
+    }
   }
 
   // Parse AI response and structure it

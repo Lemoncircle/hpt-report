@@ -202,11 +202,17 @@ export default function Home() {
         formData.append('contextFiles', doc);
       });
 
-      // Call our analysis API endpoint
+      // Call our analysis API endpoint with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      
       const response = await fetch('/api/analyze', {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -234,7 +240,16 @@ export default function Home() {
       setSelectedEmployee(0);
       setSearchTerm('');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze the file. Please ensure it\'s a valid Excel file.';
+      let errorMessage = 'Failed to analyze the file. Please ensure it\'s a valid Excel file.';
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          errorMessage = 'Analysis timed out. Please try again with a smaller file or check your internet connection.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
       setError(errorMessage);
       console.error('Analysis error:', err);
     } finally {
