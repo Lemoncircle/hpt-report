@@ -173,7 +173,7 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[], docume
 
   // Process each employee with AI enhancement
   const enhancedEmployees = await Promise.all(
-    baseEmployees.map(async (employee, index) => {
+    baseEmployees.map(async (employee) => {
       try {
         console.log(`🧠 Processing AI insights for ${employee.name}...`);
         
