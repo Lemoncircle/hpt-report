@@ -220,6 +220,14 @@ export default function Home() {
       }
 
       const result = await response.json();
+      console.log('📊 Analysis result structure:', {
+        hasEmployees: !!result.employees,
+        employeeCount: result.employees?.length || 0,
+        hasProcessingInfo: !!result.processingInfo,
+        aiEnabled: result.processingInfo?.aiEnabled,
+        aiSuccessRate: result.processingInfo?.aiSuccessRate
+      });
+      
       const processingTime = Date.now() - startTime;
       
       // Create new analysis history entry
@@ -227,7 +235,7 @@ export default function Home() {
         id: Date.now().toString(),
         fileName: file.name,
         uploadDate: new Date(),
-        reportData: result.report,
+        reportData: result, // Use result directly, not result.report
         fileSize: file.size,
         processingTime,
         documentContext: result.documentContext
@@ -236,7 +244,7 @@ export default function Home() {
       // Add to history and set as current
       setAnalysisHistory(prev => [newAnalysis, ...prev]);
       setCurrentAnalysisId(newAnalysis.id);
-      setReportData(result.report);
+      setReportData(result); // Use result directly
       setSelectedEmployee(0);
       setSearchTerm('');
     } catch (err) {

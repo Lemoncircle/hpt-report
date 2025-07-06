@@ -45,8 +45,15 @@ export class AIPerformanceAnalyzer {
     console.log('AI Configuration:', {
       enabled: this.isEnabled,
       fallbackEnabled: this.fallbackEnabled,
-      hasApiKey: !!this.apiKey
+      hasApiKey: !!this.apiKey,
+      apiKeyLength: this.apiKey ? this.apiKey.length : 0
     });
+    
+    // TEMPORARY: Enable fallback for debugging
+    if (!this.isEnabled || !this.apiKey) {
+      console.warn('🚨 AI not properly configured, enabling fallback for debugging');
+      this.fallbackEnabled = true;
+    }
   }
 
   // Main method to get AI-enhanced insights for an employee

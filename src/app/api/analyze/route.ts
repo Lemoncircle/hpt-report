@@ -217,12 +217,7 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[], docume
       } catch (error) {
         console.error(`❌ AI enhancement failed for ${employee.name}:`, error);
         
-        // Check if this is a configuration error (AI required but not configured)
-        if (error instanceof Error && error.message.includes('AI analysis is required')) {
-          // Re-throw configuration errors to stop processing
-          throw error;
-        }
-        
+        // Always return a valid employee object, even if AI fails
         fallbackUsed = true;
         return {
           ...employee,
@@ -250,13 +245,7 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[], docume
     }
   } catch (error) {
     console.error('❌ Team analysis failed:', error);
-    
-    // Check if this is a configuration error (AI required but not configured)
-    if (error instanceof Error && error.message.includes('AI team analysis is required')) {
-      // Re-throw configuration errors to stop processing
-      throw error;
-    }
-    
+    console.log('📊 Continuing without team AI insights...');
     teamInsights = null;
   }
 
