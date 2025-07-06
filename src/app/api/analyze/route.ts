@@ -60,6 +60,15 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
+    // DEBUG: Log environment variables (safely)
+    console.log('🔍 DEBUG: Environment Variables Check:', {
+      PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY ? 
+        `SET (${process.env.PERPLEXITY_API_KEY.substring(0, 10)}...)` : 
+        'NOT SET',
+      ENABLE_AI_INSIGHTS: process.env.ENABLE_AI_INSIGHTS || 'NOT SET',
+      AI_FALLBACK_ENABLED: process.env.AI_FALLBACK_ENABLED || 'NOT SET',
+    });
+
     // Parse the form data containing the uploaded file
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -109,27 +118,31 @@ export async function POST(request: NextRequest) {
 
     // Analyze the survey data and generate individual employee reports with AI enhancement
     const reportData = await analyzeEmployeeDataWithAI(jsonData, documentContext);
-    
+
+    // Calculate total processing time
     const processingTime = Date.now() - startTime;
     reportData.processingInfo.processingTime = processingTime;
 
-    return NextResponse.json({ 
-      report: reportData,
-      filename: file.name,
-      processedAt: new Date().toISOString(),
-      processingTimeMs: processingTime,
-      documentContext: documentContext.length > 0 ? documentContext.map(doc => ({
-        fileName: doc.fileName,
-        fileType: doc.fileType,
-        fileSize: doc.fileSize,
-        uploadDate: doc.uploadDate
-      })) : undefined
-    });
+    console.log(`✅ Analysis completed in ${processingTime}ms`);
+    console.log(`📊 AI Success Rate: ${reportData.processingInfo.aiSuccessRate.toFixed(1)}%`);
+
+    // Return the comprehensive report data
+    return NextResponse.json(reportData);
 
   } catch (error) {
-    console.error('Analysis error:', error);
+    console.error('❌ Analysis failed:', error);
+    
     return NextResponse.json(
-      { error: 'Failed to analyze the file. Please ensure it contains valid employee survey data.' },
+      { 
+        error: 'Failed to analyze the file', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        processingInfo: {
+          aiEnabled: process.env.ENABLE_AI_INSIGHTS === 'true',
+          aiSuccessRate: 0,
+          fallbackUsed: true,
+          processingTime: Date.now() - startTime,
+        }
+      }, 
       { status: 500 }
     );
   }
@@ -158,37 +171,32 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[], docume
   let aiSuccessCount = 0;
   let fallbackUsed = false;
 
-  // Enhance each employee report with AI insights
+  // Process each employee with AI enhancement
   const enhancedEmployees = await Promise.all(
     baseEmployees.map(async (employee, index) => {
       try {
-        // Extract additional data for AI analysis
-        const rowData = data[index];
-        const feedbackField = findColumnVariation(columns, ['feedback', 'comments', 'notes', 'suggestions', 'remarks']);
-        const roleField = findColumnVariation(columns, ['role', 'position', 'title', 'job_title']);
-        const departmentField = findColumnVariation(columns, ['department', 'dept', 'division', 'team']);
-        const tenureField = findColumnVariation(columns, ['tenure', 'years', 'experience', 'time_in_role']);
-
-        const employeeData = {
-          name: employee.name,
-          ratings: employee.valueRatings,
-          feedback: feedbackField && rowData[feedbackField] ? String(rowData[feedbackField]) : undefined,
-          role: roleField && rowData[roleField] ? String(rowData[roleField]) : undefined,
-          department: departmentField && rowData[departmentField] ? String(rowData[departmentField]) : undefined,
-          tenure: tenureField && rowData[tenureField] ? String(rowData[tenureField]) : undefined,
-        };
-
-        const teamContext = {
-          averageRatings,
-          teamSize: baseEmployees.length,
-          // Could add industry benchmarks here if available
-        };
-
-        // Get AI-enhanced insights (now prioritizing AI analysis)
-        const aiInsights = await aiAnalyzer.getEnhancedInsights(employeeData, teamContext, documentContext);
+        console.log(`🧠 Processing AI insights for ${employee.name}...`);
+        
+        // Get AI-enhanced insights for this employee
+        const aiInsights = await aiAnalyzer.getEnhancedInsights(
+          {
+            name: employee.name,
+            ratings: employee.valueRatings,
+            feedback: undefined, // Could extract from original data if available
+            role: undefined,
+            department: undefined,
+            tenure: undefined,
+          },
+          {
+            averageRatings,
+            teamSize: baseEmployees.length,
+          },
+          documentContext
+        );
         
         if (aiInsights) {
           aiSuccessCount++;
+          console.log(`✅ AI insights generated for ${employee.name}`);
           return {
             ...employee,
             aiInsights,
@@ -200,14 +208,14 @@ async function analyzeEmployeeDataWithAI(data: Record<string, unknown>[], docume
         } else {
           // This should rarely happen with the new AI-first approach
           fallbackUsed = true;
-          console.warn(`No AI insights generated for ${employee.name}, using rule-based analysis`);
+          console.warn(`⚠️ No AI insights generated for ${employee.name}, using rule-based analysis`);
           return {
             ...employee,
             isAiEnhanced: false,
           };
         }
       } catch (error) {
-        console.error(`AI enhancement failed for ${employee.name}:`, error);
+        console.error(`❌ AI enhancement failed for ${employee.name}:`, error);
         
         // Check if this is a configuration error (AI required but not configured)
         if (error instanceof Error && error.message.includes('AI analysis is required')) {
