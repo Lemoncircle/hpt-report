@@ -233,7 +233,7 @@ ${documentContext && documentContext.length > 0 ?
       const response = await axios.post<PerplexityResponse>(
         this.baseURL,
         {
-          model: 'llama-3.1-sonar-large-128k-online', // Using Perplexity's most capable model
+          model: 'sonar-pro', // Using Perplexity's most capable model
           messages: [
             {
               role: 'system',
