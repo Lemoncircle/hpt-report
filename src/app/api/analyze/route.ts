@@ -100,11 +100,24 @@ export async function POST(request: NextRequest) {
           const processedDoc = await documentProcessor.processDocument(contextFile);
           documentContext.push(processedDoc);
           console.log(`✅ Processed context document: ${contextFile.name}`);
+          // DEBUG: Log extracted text content (first 500 characters)
+          console.log(`📝 Extracted text preview from ${contextFile.name}:`, 
+            processedDoc.extractedText.substring(0, 500) + (processedDoc.extractedText.length > 500 ? '...' : ''));
+          console.log(`📊 Full text length: ${processedDoc.extractedText.length} characters`);
         } catch (error) {
           console.warn(`⚠️ Failed to process context document ${contextFile.name}:`, error);
           // Continue processing other files even if one fails
         }
       }
+      
+      // DEBUG: Log final document context summary
+      console.log(`🎯 Final document context summary:`, {
+        totalDocuments: documentContext.length,
+        totalCharacters: documentContext.reduce((sum, doc) => sum + doc.extractedText.length, 0),
+        fileNames: documentContext.map(doc => doc.fileName)
+      });
+    } else {
+      console.log('📄 No context documents provided - using general AI analysis');
     }
 
     // Read and parse the Excel file

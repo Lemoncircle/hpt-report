@@ -87,14 +87,45 @@ export class AIPerformanceAnalyzer {
     try {
       console.log(`Generating AI insights for ${employeeData.name}...`);
       
+      // DEBUG: Log document context availability
+      if (documentContext && documentContext.length > 0) {
+        console.log(`🎯 Document context available for ${employeeData.name}:`, {
+          documentCount: documentContext.length,
+          documents: documentContext.map(doc => ({
+            fileName: doc.fileName,
+            textLength: doc.extractedText.length,
+            textPreview: doc.extractedText.substring(0, 200) + '...'
+          }))
+        });
+      } else {
+        console.log(`📄 No document context for ${employeeData.name} - using general analysis`);
+      }
+      
       // Create comprehensive prompt for Perplexity
       const prompt = this.buildAnalysisPrompt(employeeData, teamContext, documentContext);
+      
+      // DEBUG: Log prompt structure (first 1000 characters to avoid overwhelming logs)
+      console.log(`🧠 Generated prompt preview for ${employeeData.name}:`, 
+        prompt.substring(0, 1000) + (prompt.length > 1000 ? '...' : ''));
+      console.log(`📏 Full prompt length: ${prompt.length} characters`);
       
       // Make API call to Perplexity
       const response = await this.callPerplexityAPI(prompt);
       
+      // DEBUG: Log AI response preview
+      console.log(`🤖 AI response preview for ${employeeData.name}:`, 
+        response.substring(0, 500) + (response.length > 500 ? '...' : ''));
+      
       // Parse and structure the AI response
       const insights = this.parseAIResponse(response, documentContext);
+      
+      // DEBUG: Log whether context was detected in the response
+      console.log(`🔍 Context integration check for ${employeeData.name}:`, {
+        hasDocumentContext: insights.hasDocumentContext,
+        responseContainsOrgSpecific: response.toLowerCase().includes('organization') || response.toLowerCase().includes('company') || response.toLowerCase().includes('policy'),
+        summaryLength: insights.enhancedSummary.length,
+        recommendationsLength: insights.behavioralRecommendations.length
+      });
       
       console.log(`✅ AI insights generated successfully for ${employeeData.name}`);
       return insights;
@@ -163,17 +194,24 @@ ${teamContext.industryBenchmarks ? `- Industry Benchmarks: ${Object.entries(team
       prompt += `\n🏢 ORGANIZATION-SPECIFIC CONTEXT DOCUMENTS:
 ${contextTexts}
 
-🎯 CRITICAL INSTRUCTIONS FOR CONTEXT USAGE:
-1. MANDATORY REFERENCE: You MUST actively reference and cite specific information from the above organizational documents in your analysis
-2. POLICY ALIGNMENT: Align all recommendations with the organization's stated policies, values, and procedures
-3. SPECIFIC CITATIONS: When making recommendations, explicitly mention which document or policy supports your suggestion
-4. CONTEXTUAL RELEVANCE: Tailor your language, priorities, and focus areas to match the organization's culture and standards
-5. AVOID GENERIC ADVICE: Do NOT provide generic HR advice - make everything specific to this organization's documented approach
+🎯 MANDATORY CONTEXT INTEGRATION REQUIREMENTS:
+You MUST integrate the above organizational documents into your analysis. This is NOT optional.
 
-EXAMPLE OF EXPECTED INTEGRATION:
-- Instead of "Improve communication skills" → "Develop communication skills in line with the organization's emphasis on [specific value from documents]"
-- Instead of "Consider leadership training" → "Pursue leadership development opportunities that align with the company's [specific leadership framework from documents]"
-- Reference specific competencies, values, or procedures mentioned in the uploaded documents
+REQUIRED ACTIONS:
+1. READ the organizational documents carefully
+2. IDENTIFY specific policies, values, procedures, and terminology from the documents
+3. REFERENCE specific document content in your recommendations 
+4. USE organization-specific language and frameworks from the documents
+5. CITE which document supports each major recommendation
+
+EXAMPLE INTEGRATION (DO THIS):
+❌ WRONG: "Improve communication skills"
+✅ CORRECT: "Develop communication skills in alignment with [specific policy/value from Document X]"
+
+❌ WRONG: "Consider leadership training" 
+✅ CORRECT: "Pursue leadership development as outlined in [specific framework from Document Y]"
+
+🚨 CRITICAL: Your analysis will be REJECTED if it doesn't actively reference and cite the provided organizational documents.
 
 `;
     }
@@ -229,6 +267,13 @@ ${documentContext && documentContext.length > 0 ?
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
     
+    // Determine if context documents are included in the prompt
+    const hasContextDocs = prompt.includes('ORGANIZATION-SPECIFIC CONTEXT DOCUMENTS');
+    
+    const systemMessage = hasContextDocs 
+      ? 'You are an expert HR performance analyst. CRITICAL REQUIREMENT: When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your response will be considered INCOMPLETE if it doesn\'t cite specific organizational content. Always provide organization-specific recommendations rather than generic HR advice.'
+      : 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. Provide comprehensive, data-driven insights and actionable recommendations.';
+    
     try {
       const response = await axios.post<PerplexityResponse>(
         this.baseURL,
@@ -237,7 +282,7 @@ ${documentContext && documentContext.length > 0 ?
           messages: [
             {
               role: 'system',
-              content: 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your recommendations should be tailored to the specific organizational culture and standards rather than generic HR advice. Always cite specific sources from the provided documents when making recommendations.'
+              content: systemMessage
             },
             {
               role: 'user',
@@ -297,6 +342,21 @@ ${documentContext && documentContext.length > 0 ?
         const jsonString = cleanResponse.substring(jsonStart, jsonEnd);
         const parsed = JSON.parse(jsonString);
         
+        // Validate context integration if documents were provided
+        if (documentContext && documentContext.length > 0) {
+          const hasDocumentReferences = this.validateContextIntegration(aiResponse, documentContext);
+          if (!hasDocumentReferences) {
+            console.warn('⚠️ AI response may not be properly integrating organizational context documents');
+            console.warn('📝 Response content check:', {
+              hasOrgTerms: /organization|company|policy|procedure|value|framework|standard|culture/i.test(aiResponse),
+              hasDocumentMentions: documentContext.some(doc => 
+                aiResponse.toLowerCase().includes(doc.fileName.toLowerCase().replace(/\.(pdf|docx|txt|md|rtf)$/i, ''))
+              ),
+              responseLength: aiResponse.length
+            });
+          }
+        }
+        
         // Validate and return structured response
         return {
           enhancedSummary: parsed.enhancedSummary || 'AI analysis completed successfully.',
@@ -316,6 +376,41 @@ ${documentContext && documentContext.length > 0 ?
 
     // Fallback: parse as text and structure it
     return this.parseTextResponse(aiResponse, documentContext);
+  }
+
+  // Validate if AI response properly integrates organizational context
+  private validateContextIntegration(aiResponse: string, documentContext: DocumentContext[]): boolean {
+    const response = aiResponse.toLowerCase();
+    
+    // Check for organizational terminology
+    const hasOrgTerms = /organization|company|policy|procedure|value|framework|standard|culture|according to|as outlined|as mentioned|per the|in line with|alignment with/i.test(aiResponse);
+    
+    // Check for document-specific references
+    const hasDocumentReferences = documentContext.some(doc => {
+      const fileName = doc.fileName.toLowerCase().replace(/\.(pdf|docx|txt|md|rtf)$/i, '');
+      return response.includes(fileName) || response.includes('document');
+    });
+    
+    // Check for specific content from documents (sample key terms)
+    const documentTerms = documentContext.map(doc => 
+      doc.extractedText.toLowerCase().split(/\s+/).filter(word => 
+        word.length > 4 && !['with', 'from', 'that', 'this', 'will', 'have', 'been', 'were', 'they', 'their', 'there', 'when', 'where', 'what', 'which', 'should', 'could', 'would'].includes(word)
+      ).slice(0, 20) // Take first 20 meaningful words
+    ).flat();
+    
+    const hasSpecificTerms = documentTerms.some(term => response.includes(term));
+    
+    const validationScore = [hasOrgTerms, hasDocumentReferences, hasSpecificTerms].filter(Boolean).length;
+    
+    console.log(`🔍 Context integration validation:`, {
+      hasOrgTerms,
+      hasDocumentReferences,
+      hasSpecificTerms,
+      validationScore,
+      isValid: validationScore >= 1
+    });
+    
+    return validationScore >= 1; // At least one indicator should be present
   }
 
   // Parse non-JSON AI response

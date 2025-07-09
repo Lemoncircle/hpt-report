@@ -697,6 +697,12 @@ export default function Home() {
                   <p className="text-sm text-purple-700">
                     AI analysis will use these documents to provide organization-specific insights
                   </p>
+                  <div className="mt-3 text-xs text-purple-600">
+                    📄 Files: {contextDocuments.map(doc => doc.name).join(', ')}
+                  </div>
+                  <div className="mt-2 text-xs text-purple-600">
+                    💡 Tip: Check your browser console after analysis to see document processing details
+                  </div>
                 </div>
               )}
             </div>
