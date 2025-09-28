@@ -29,9 +29,8 @@ export class AIPerformanceAnalyzer {
     // Force AI-only mode: disable fallback to ensure all analysis is AI-based
     this.fallbackEnabled = process.env.AI_FALLBACK_ENABLED === 'true';
     
-    if (this.apiKey) {
-      this.genAI = new GoogleGenerativeAI(this.apiKey);
-    }
+    // Don't initialize Google AI during build time - only when actually needed
+    this.genAI = null;
     
     if (!this.apiKey && this.isEnabled) {
       console.warn('Google AI API key not found. AI insights will be disabled.');
@@ -261,6 +260,11 @@ ${documentContext && documentContext.length > 0 ?
 
   // Make API call to Google AI (Gemini)
   private async callGoogleAI(prompt: string): Promise<string> {
+    // Initialize Google AI client only when needed (not during build time)
+    if (!this.genAI && this.apiKey) {
+      this.genAI = new GoogleGenerativeAI(this.apiKey);
+    }
+    
     if (!this.genAI) {
       throw new Error('Google AI not initialized. Please check your API key configuration.');
     }
