@@ -97,7 +97,7 @@ export class AIPerformanceAnalyzer {
         console.log(`📄 No document context for ${employeeData.name} - using general analysis`);
       }
       
-      // Create comprehensive prompt for Perplexity
+      // Create comprehensive prompt for Google AI
       const prompt = this.buildAnalysisPrompt(employeeData, teamContext, documentContext);
       
       // DEBUG: Log prompt structure (first 1000 characters to avoid overwhelming logs)
@@ -277,9 +277,9 @@ ${documentContext && documentContext.length > 0 ?
         ? 'You are an expert HR performance analyst. CRITICAL REQUIREMENT: When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your response will be considered INCOMPLETE if it doesn\'t cite specific organizational content. Always provide organization-specific recommendations rather than generic HR advice.'
         : 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. Provide comprehensive, data-driven insights and actionable recommendations.';
       
-      // Get the Gemini Pro model with system instruction
+      // Get the Gemini 2.5 Flash model with system instruction
       const model = this.genAI.getGenerativeModel({ 
-        model: "gemini-1.5-pro",
+        model: "gemini-2.5-flash",
         systemInstruction: systemInstruction,
         generationConfig: {
           temperature: 0.3, // Lower temperature for more consistent, analytical responses

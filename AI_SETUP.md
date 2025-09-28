@@ -75,7 +75,7 @@ When `AI_FALLBACK_ENABLED=false`, you get:
 
 ### Hybrid Analysis System
 
-1. **Primary AI Analysis**: Uses Google's `gemini-1.5-pro` model
+1. **Primary AI Analysis**: Uses Google's `gemini-2.5-flash` model
 2. **Intelligent Fallback**: Automatically switches to rule-based analysis if AI fails
 3. **Performance Tracking**: Monitors AI success rates and processing times
 
