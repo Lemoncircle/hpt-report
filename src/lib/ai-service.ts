@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { DocumentContext } from './document-service';
 
 // Interface for AI-enhanced insights
@@ -14,30 +14,27 @@ interface AIInsights {
   hasDocumentContext: boolean;
 }
 
-// Interface for Perplexity API response
-interface PerplexityResponse {
-  choices: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-}
+// Google AI response is handled directly through the SDK, no interface needed
 
-// AI Service class for Perplexity integration
+// AI Service class for Google AI integration
 export class AIPerformanceAnalyzer {
   private apiKey: string;
-  private baseURL: string = 'https://api.perplexity.ai/chat/completions';
+  private genAI: GoogleGenerativeAI | null = null;
   private isEnabled: boolean;
   private fallbackEnabled: boolean;
 
   constructor() {
-    this.apiKey = process.env.PERPLEXITY_API_KEY || '';
+    this.apiKey = process.env.GOOGLE_AI_API_KEY || '';
     this.isEnabled = process.env.ENABLE_AI_INSIGHTS === 'true' && !!this.apiKey;
     // Force AI-only mode: disable fallback to ensure all analysis is AI-based
     this.fallbackEnabled = process.env.AI_FALLBACK_ENABLED === 'true';
     
+    if (this.apiKey) {
+      this.genAI = new GoogleGenerativeAI(this.apiKey);
+    }
+    
     if (!this.apiKey && this.isEnabled) {
-      console.warn('Perplexity API key not found. AI insights will be disabled.');
+      console.warn('Google AI API key not found. AI insights will be disabled.');
       this.isEnabled = false;
     }
     
@@ -80,7 +77,7 @@ export class AIPerformanceAnalyzer {
         return this.generateFallbackInsights(employeeData, teamContext);
       } else {
         console.error('AI insights disabled and fallback disabled. Cannot provide analysis.');
-        throw new Error('AI analysis is required but not properly configured. Please set PERPLEXITY_API_KEY and ENABLE_AI_INSIGHTS=true');
+        throw new Error('AI analysis is required but not properly configured. Please set GOOGLE_AI_API_KEY and ENABLE_AI_INSIGHTS=true');
       }
     }
 
@@ -109,8 +106,8 @@ export class AIPerformanceAnalyzer {
         prompt.substring(0, 1000) + (prompt.length > 1000 ? '...' : ''));
       console.log(`📏 Full prompt length: ${prompt.length} characters`);
       
-      // Make API call to Perplexity
-      const response = await this.callPerplexityAPI(prompt);
+      // Make API call to Google AI
+      const response = await this.callGoogleAI(prompt);
       
       // DEBUG: Log AI response preview
       console.log(`🤖 AI response preview for ${employeeData.name}:`, 
@@ -262,71 +259,60 @@ ${documentContext && documentContext.length > 0 ?
     return prompt;
   }
 
-  // Make API call to Perplexity
-  private async callPerplexityAPI(prompt: string): Promise<string> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
-    
-    // Determine if context documents are included in the prompt
-    const hasContextDocs = prompt.includes('ORGANIZATION-SPECIFIC CONTEXT DOCUMENTS');
-    
-    const systemMessage = hasContextDocs 
-      ? 'You are an expert HR performance analyst. CRITICAL REQUIREMENT: When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your response will be considered INCOMPLETE if it doesn\'t cite specific organizational content. Always provide organization-specific recommendations rather than generic HR advice.'
-      : 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. Provide comprehensive, data-driven insights and actionable recommendations.';
+  // Make API call to Google AI (Gemini)
+  private async callGoogleAI(prompt: string): Promise<string> {
+    if (!this.genAI) {
+      throw new Error('Google AI not initialized. Please check your API key configuration.');
+    }
     
     try {
-      const response = await axios.post<PerplexityResponse>(
-        this.baseURL,
-        {
-          model: 'sonar-pro', // Using Perplexity's most capable model
-          messages: [
-            {
-              role: 'system',
-              content: systemMessage
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 2000,
-          temperature: 0.3, // Lower temperature for more consistent, analytical responses
-          top_p: 0.9,
-          stream: false
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          timeout: 45000, // 45 second timeout
-          signal: controller.signal
-        }
-      );
-
-      clearTimeout(timeoutId);
-      return response.data.choices[0]?.message?.content || '';
-    } catch (error) {
-      clearTimeout(timeoutId);
+      // Determine if context documents are included in the prompt
+      const hasContextDocs = prompt.includes('ORGANIZATION-SPECIFIC CONTEXT DOCUMENTS');
       
-      // Enhanced error handling
-      if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNABORTED' || error.name === 'AbortError') {
-          throw new Error('AI analysis timed out. Please try again with a smaller dataset.');
-        }
-        if (error.response?.status === 401) {
-          throw new Error('Invalid API key. Please check your Perplexity API key configuration.');
-        }
-        if (error.response?.status === 429) {
-          throw new Error('API rate limit exceeded. Please try again in a few minutes.');
-        }
-        if (error.response?.status && error.response.status >= 500) {
-          throw new Error('Perplexity API service unavailable. Please try again later.');
-        }
-        throw new Error(`API request failed: ${error.response?.status || 'Unknown'} - ${error.response?.statusText || error.message}`);
+      const systemInstruction = hasContextDocs 
+        ? 'You are an expert HR performance analyst. CRITICAL REQUIREMENT: When organizational documents are provided, you MUST actively reference and integrate specific policies, values, and procedures from those documents into your analysis. Your response will be considered INCOMPLETE if it doesn\'t cite specific organizational content. Always provide organization-specific recommendations rather than generic HR advice.'
+        : 'You are an expert HR performance analyst with deep expertise in employee development, behavioral psychology, and organizational performance. Provide comprehensive, data-driven insights and actionable recommendations.';
+      
+      // Get the Gemini Pro model with system instruction
+      const model = this.genAI.getGenerativeModel({ 
+        model: "gemini-1.5-pro",
+        systemInstruction: systemInstruction,
+        generationConfig: {
+          temperature: 0.3, // Lower temperature for more consistent, analytical responses
+          topP: 0.9,
+          maxOutputTokens: 2000,
+        },
+      });
+
+      // Generate content using the prompt
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+      
+      if (!text) {
+        throw new Error('Empty response from Google AI');
       }
       
-      throw error;
+      return text;
+    } catch (error) {
+      // Enhanced error handling for Google AI
+      if (error instanceof Error) {
+        if (error.message.includes('API_KEY_INVALID')) {
+          throw new Error('Invalid API key. Please check your Google AI API key configuration.');
+        }
+        if (error.message.includes('QUOTA_EXCEEDED')) {
+          throw new Error('API quota exceeded. Please check your Google AI usage limits.');
+        }
+        if (error.message.includes('RATE_LIMIT_EXCEEDED')) {
+          throw new Error('API rate limit exceeded. Please try again in a few minutes.');
+        }
+        if (error.message.includes('SERVICE_UNAVAILABLE')) {
+          throw new Error('Google AI service unavailable. Please try again later.');
+        }
+        throw new Error(`Google AI request failed: ${error.message}`);
+      }
+      
+      throw new Error('Unknown error occurred while calling Google AI');
     }
   }
 
@@ -564,7 +550,7 @@ ${documentContext && documentContext.length > 0 ?
         return this.generateFallbackTeamAnalysis(teamData);
       } else {
         console.error('AI team analysis disabled and fallback disabled. Cannot provide team analysis.');
-        throw new Error('AI team analysis is required but not properly configured. Please set PERPLEXITY_API_KEY and ENABLE_AI_INSIGHTS=true');
+        throw new Error('AI team analysis is required but not properly configured. Please set GOOGLE_AI_API_KEY and ENABLE_AI_INSIGHTS=true');
       }
     }
 
@@ -572,7 +558,7 @@ ${documentContext && documentContext.length > 0 ?
       console.log(`Generating AI team insights for ${teamData.length} employees...`);
       
       const prompt = this.buildTeamAnalysisPrompt(teamData, documentContext);
-      const response = await this.callPerplexityAPI(prompt);
+      const response = await this.callGoogleAI(prompt);
       const insights = this.parseTeamAnalysisResponse(response);
       
       console.log('✅ AI team insights generated successfully');

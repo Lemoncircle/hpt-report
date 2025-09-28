@@ -1,26 +1,26 @@
 # AI Enhancement Setup Guide
 
-## 🧠 Perplexity AI Integration
+## 🧠 Google AI Integration
 
-This application now features a hybrid AI-enhanced analysis system using Perplexity API for deeper insights while maintaining a robust rule-based fallback system.
+This application now features a hybrid AI-enhanced analysis system using Google's Gemini API for deeper insights while maintaining a robust rule-based fallback system.
 
 ## 🚀 Setup Instructions
 
-### 1. Get Your Perplexity API Key
+### 1. Get Your Google AI API Key
 
-1. Visit [Perplexity AI](https://www.perplexity.ai/)
-2. Sign up for an account or log in
-3. Navigate to your API settings
-4. Generate a new API key
+1. Visit [Google AI Studio](https://aistudio.google.com/)
+2. Sign up for an account or log in with your Google account
+3. Navigate to "Get API key" in the left sidebar
+4. Create a new API key
 5. Copy the API key for configuration
 
 ### 2. Configure Environment Variables
 
-Create or update your `.env.local` file with your Perplexity API key:
+Create or update your `.env.local` file with your Google AI API key:
 
 ```bash
-# Perplexity API Configuration
-PERPLEXITY_API_KEY=your_actual_perplexity_api_key_here
+# Google AI API Configuration
+GOOGLE_AI_API_KEY=your_actual_google_ai_api_key_here
 
 # AI Enhancement Settings
 ENABLE_AI_INSIGHTS=true
@@ -44,7 +44,7 @@ AI_FALLBACK_ENABLED=false
 
 ### 3. Environment Variables Explained
 
-- **`PERPLEXITY_API_KEY`**: Your Perplexity API key for AI-enhanced insights
+- **`GOOGLE_AI_API_KEY`**: Your Google AI API key for AI-enhanced insights
 - **`ENABLE_AI_INSIGHTS`**: Set to `true` to enable AI features, `false` for rule-based only
 - **`AI_FALLBACK_ENABLED`**: 
   - `false` = AI-Only Mode (recommended for best insights)
@@ -75,7 +75,7 @@ When `AI_FALLBACK_ENABLED=false`, you get:
 
 ### Hybrid Analysis System
 
-1. **Primary AI Analysis**: Uses Perplexity's `llama-3.1-sonar-large-128k-online` model
+1. **Primary AI Analysis**: Uses Google's `gemini-1.5-pro` model
 2. **Intelligent Fallback**: Automatically switches to rule-based analysis if AI fails
 3. **Performance Tracking**: Monitors AI success rates and processing times
 
@@ -122,7 +122,7 @@ When `AI_FALLBACK_ENABLED=false`, you get:
 
 ## 🔒 Privacy & Security
 
-- **No Data Storage**: Employee data is not stored by Perplexity
+- **No Data Storage**: Employee data is not stored by Google AI
 - **Secure Transmission**: All API calls use HTTPS encryption
 - **Local Processing**: Base analysis happens locally before AI enhancement
 - **Fallback Protection**: System works even if AI service is unavailable
@@ -141,9 +141,9 @@ When `AI_FALLBACK_ENABLED=false`, you get:
 - Rule-based fallback provides instant results
 
 ### API Limits?
-- Perplexity has rate limits and usage quotas
+- Google AI has rate limits and usage quotas
 - System automatically falls back to rule-based analysis
-- Monitor your API usage in Perplexity dashboard
+- Monitor your API usage in Google AI Studio dashboard
 
 ## 📈 Performance Monitoring
 
@@ -185,6 +185,6 @@ If you encounter issues:
 1. Check the browser console for error messages
 2. Verify environment variables are set correctly
 3. Test with a small dataset first
-4. Ensure your Perplexity API key has sufficient credits
+4. Ensure your Google AI API key has sufficient credits
 
 The system is designed to be resilient - even if AI fails, you'll still get comprehensive rule-based analysis! 

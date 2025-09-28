@@ -62,8 +62,8 @@ export async function POST(request: NextRequest) {
   try {
     // DEBUG: Log environment variables (safely)
     console.log('🔍 DEBUG: Environment Variables Check:', {
-      PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY ? 
-        `SET (${process.env.PERPLEXITY_API_KEY.substring(0, 10)}...)` : 
+      GOOGLE_AI_API_KEY: process.env.GOOGLE_AI_API_KEY ? 
+        `SET (${process.env.GOOGLE_AI_API_KEY.substring(0, 10)}...)` : 
         'NOT SET',
       ENABLE_AI_INSIGHTS: process.env.ENABLE_AI_INSIGHTS || 'NOT SET',
       AI_FALLBACK_ENABLED: process.env.AI_FALLBACK_ENABLED || 'NOT SET',
